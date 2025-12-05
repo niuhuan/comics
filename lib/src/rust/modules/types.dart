@@ -6,16 +6,35 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-/// 漫画分类
+/// 分类 (参考 pikapika Category)
 class Category {
   final String id;
-  final String name;
-  final String? cover;
+  final String title;
+  final String description;
+  final RemoteImageInfo? thumb;
+  final bool isWeb;
+  final bool active;
+  final String? link;
 
-  const Category({required this.id, required this.name, this.cover});
+  const Category({
+    required this.id,
+    required this.title,
+    required this.description,
+    this.thumb,
+    required this.isWeb,
+    required this.active,
+    this.link,
+  });
 
   @override
-  int get hashCode => id.hashCode ^ name.hashCode ^ cover.hashCode;
+  int get hashCode =>
+      id.hashCode ^
+      title.hashCode ^
+      description.hashCode ^
+      thumb.hashCode ^
+      isWeb.hashCode ^
+      active.hashCode ^
+      link.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -23,85 +42,79 @@ class Category {
       other is Category &&
           runtimeType == other.runtimeType &&
           id == other.id &&
-          name == other.name &&
-          cover == other.cover;
-}
-
-/// 章节信息
-class Chapter {
-  final String id;
-  final String title;
-  final String? updateTime;
-
-  const Chapter({required this.id, required this.title, this.updateTime});
-
-  @override
-  int get hashCode => id.hashCode ^ title.hashCode ^ updateTime.hashCode;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is Chapter &&
-          runtimeType == other.runtimeType &&
-          id == other.id &&
           title == other.title &&
-          updateTime == other.updateTime;
+          description == other.description &&
+          thumb == other.thumb &&
+          isWeb == other.isWeb &&
+          active == other.active &&
+          link == other.link;
 }
 
-/// 章节图片列表
-class ChapterImages {
-  final String chapterId;
-  final List<ImageInfo> images;
-
-  const ChapterImages({required this.chapterId, required this.images});
-
-  @override
-  int get hashCode => chapterId.hashCode ^ images.hashCode;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is ChapterImages &&
-          runtimeType == other.runtimeType &&
-          chapterId == other.chapterId &&
-          images == other.images;
-}
-
-/// 漫画详情
+/// 漫画详情 (参考 pikapika ComicInfo)
 class ComicDetail {
   final String id;
   final String title;
-  final String cover;
-  final String? author;
-  final String? description;
-  final String? status;
+  final String author;
+  final int pagesCount;
+  final int epsCount;
+  final bool finished;
+  final List<String> categories;
+  final RemoteImageInfo thumb;
+  final int likesCount;
+  final String description;
+  final String chineseTeam;
   final List<String> tags;
-  final List<Chapter> chapters;
-  final String? updateTime;
+  final String updatedAt;
+  final String createdAt;
+  final bool allowDownload;
+  final int viewsCount;
+  final bool isFavourite;
+  final bool isLiked;
+  final int commentsCount;
 
   const ComicDetail({
     required this.id,
     required this.title,
-    required this.cover,
-    this.author,
-    this.description,
-    this.status,
+    required this.author,
+    required this.pagesCount,
+    required this.epsCount,
+    required this.finished,
+    required this.categories,
+    required this.thumb,
+    required this.likesCount,
+    required this.description,
+    required this.chineseTeam,
     required this.tags,
-    required this.chapters,
-    this.updateTime,
+    required this.updatedAt,
+    required this.createdAt,
+    required this.allowDownload,
+    required this.viewsCount,
+    required this.isFavourite,
+    required this.isLiked,
+    required this.commentsCount,
   });
 
   @override
   int get hashCode =>
       id.hashCode ^
       title.hashCode ^
-      cover.hashCode ^
       author.hashCode ^
+      pagesCount.hashCode ^
+      epsCount.hashCode ^
+      finished.hashCode ^
+      categories.hashCode ^
+      thumb.hashCode ^
+      likesCount.hashCode ^
       description.hashCode ^
-      status.hashCode ^
+      chineseTeam.hashCode ^
       tags.hashCode ^
-      chapters.hashCode ^
-      updateTime.hashCode;
+      updatedAt.hashCode ^
+      createdAt.hashCode ^
+      allowDownload.hashCode ^
+      viewsCount.hashCode ^
+      isFavourite.hashCode ^
+      isLiked.hashCode ^
+      commentsCount.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -110,57 +123,60 @@ class ComicDetail {
           runtimeType == other.runtimeType &&
           id == other.id &&
           title == other.title &&
-          cover == other.cover &&
           author == other.author &&
+          pagesCount == other.pagesCount &&
+          epsCount == other.epsCount &&
+          finished == other.finished &&
+          categories == other.categories &&
+          thumb == other.thumb &&
+          likesCount == other.likesCount &&
           description == other.description &&
-          status == other.status &&
+          chineseTeam == other.chineseTeam &&
           tags == other.tags &&
-          chapters == other.chapters &&
-          updateTime == other.updateTime;
+          updatedAt == other.updatedAt &&
+          createdAt == other.createdAt &&
+          allowDownload == other.allowDownload &&
+          viewsCount == other.viewsCount &&
+          isFavourite == other.isFavourite &&
+          isLiked == other.isLiked &&
+          commentsCount == other.commentsCount;
 }
 
-/// 漫画列表响应
-class ComicListResponse {
-  final List<ComicSimple> comics;
-  final PageInfo pageInfo;
-
-  const ComicListResponse({required this.comics, required this.pageInfo});
-
-  @override
-  int get hashCode => comics.hashCode ^ pageInfo.hashCode;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is ComicListResponse &&
-          runtimeType == other.runtimeType &&
-          comics == other.comics &&
-          pageInfo == other.pageInfo;
-}
-
-/// 漫画基本信息（列表项）
+/// 漫画简略信息 (参考 pikapika ComicSimple)
 class ComicSimple {
   final String id;
   final String title;
-  final String cover;
-  final String? author;
-  final String? updateInfo;
+  final String author;
+  final int pagesCount;
+  final int epsCount;
+  final bool finished;
+  final List<String> categories;
+  final RemoteImageInfo thumb;
+  final int likesCount;
 
   const ComicSimple({
     required this.id,
     required this.title,
-    required this.cover,
-    this.author,
-    this.updateInfo,
+    required this.author,
+    required this.pagesCount,
+    required this.epsCount,
+    required this.finished,
+    required this.categories,
+    required this.thumb,
+    required this.likesCount,
   });
 
   @override
   int get hashCode =>
       id.hashCode ^
       title.hashCode ^
-      cover.hashCode ^
       author.hashCode ^
-      updateInfo.hashCode;
+      pagesCount.hashCode ^
+      epsCount.hashCode ^
+      finished.hashCode ^
+      categories.hashCode ^
+      thumb.hashCode ^
+      likesCount.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -169,33 +185,80 @@ class ComicSimple {
           runtimeType == other.runtimeType &&
           id == other.id &&
           title == other.title &&
-          cover == other.cover &&
           author == other.author &&
-          updateInfo == other.updateInfo;
+          pagesCount == other.pagesCount &&
+          epsCount == other.epsCount &&
+          finished == other.finished &&
+          categories == other.categories &&
+          thumb == other.thumb &&
+          likesCount == other.likesCount;
 }
 
-/// 图片信息
-class ImageInfo {
-  final String url;
-  final int? width;
-  final int? height;
-  final Map<String, String>? headers;
+/// 漫画列表分页 (参考 pikapika ComicsPage)
+class ComicsPage {
+  final PageInfo pageInfo;
+  final List<ComicSimple> docs;
 
-  const ImageInfo({required this.url, this.width, this.height, this.headers});
+  const ComicsPage({required this.pageInfo, required this.docs});
 
   @override
-  int get hashCode =>
-      url.hashCode ^ width.hashCode ^ height.hashCode ^ headers.hashCode;
+  int get hashCode => pageInfo.hashCode ^ docs.hashCode;
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is ImageInfo &&
+      other is ComicsPage &&
           runtimeType == other.runtimeType &&
-          url == other.url &&
-          width == other.width &&
-          height == other.height &&
-          headers == other.headers;
+          pageInfo == other.pageInfo &&
+          docs == other.docs;
+}
+
+/// 章节 (参考 pikapika Ep)
+class Ep {
+  final String id;
+  final String title;
+  final int order;
+  final String updatedAt;
+
+  const Ep({
+    required this.id,
+    required this.title,
+    required this.order,
+    required this.updatedAt,
+  });
+
+  @override
+  int get hashCode =>
+      id.hashCode ^ title.hashCode ^ order.hashCode ^ updatedAt.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Ep &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          title == other.title &&
+          order == other.order &&
+          updatedAt == other.updatedAt;
+}
+
+/// 章节分页 (参考 pikapika EpPage)
+class EpPage {
+  final PageInfo pageInfo;
+  final List<Ep> docs;
+
+  const EpPage({required this.pageInfo, required this.docs});
+
+  @override
+  int get hashCode => pageInfo.hashCode ^ docs.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is EpPage &&
+          runtimeType == other.runtimeType &&
+          pageInfo == other.pageInfo &&
+          docs == other.docs;
 }
 
 /// 模块信息
@@ -203,14 +266,18 @@ class ModuleInfo {
   final String id;
   final String name;
   final String version;
+  final String author;
   final String description;
+  final String? icon;
   final bool enabled;
 
   const ModuleInfo({
     required this.id,
     required this.name,
     required this.version,
+    required this.author,
     required this.description,
+    this.icon,
     required this.enabled,
   });
 
@@ -219,7 +286,9 @@ class ModuleInfo {
       id.hashCode ^
       name.hashCode ^
       version.hashCode ^
+      author.hashCode ^
       description.hashCode ^
+      icon.hashCode ^
       enabled.hashCode;
 
   @override
@@ -230,35 +299,128 @@ class ModuleInfo {
           id == other.id &&
           name == other.name &&
           version == other.version &&
+          author == other.author &&
           description == other.description &&
+          icon == other.icon &&
           enabled == other.enabled;
 }
 
-/// 分页信息
+/// 分页信息 (参考 pikapika Page)
 class PageInfo {
+  final int total;
+  final int limit;
   final int page;
-  final int pageSize;
-  final int? total;
-  final bool hasMore;
+  final int pages;
 
   const PageInfo({
+    required this.total,
+    required this.limit,
     required this.page,
-    required this.pageSize,
-    this.total,
-    required this.hasMore,
+    required this.pages,
   });
 
   @override
   int get hashCode =>
-      page.hashCode ^ pageSize.hashCode ^ total.hashCode ^ hasMore.hashCode;
+      total.hashCode ^ limit.hashCode ^ page.hashCode ^ pages.hashCode;
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is PageInfo &&
           runtimeType == other.runtimeType &&
-          page == other.page &&
-          pageSize == other.pageSize &&
           total == other.total &&
-          hasMore == other.hasMore;
+          limit == other.limit &&
+          page == other.page &&
+          pages == other.pages;
+}
+
+/// 漫画图片 (参考 pikapika Picture)
+class Picture {
+  final String id;
+  final RemoteImageInfo media;
+
+  const Picture({required this.id, required this.media});
+
+  @override
+  int get hashCode => id.hashCode ^ media.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Picture &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          media == other.media;
+}
+
+/// 图片分页 (参考 pikapika PicturePage)
+class PicturePage {
+  final PageInfo pageInfo;
+  final List<Picture> docs;
+
+  const PicturePage({required this.pageInfo, required this.docs});
+
+  @override
+  int get hashCode => pageInfo.hashCode ^ docs.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PicturePage &&
+          runtimeType == other.runtimeType &&
+          pageInfo == other.pageInfo &&
+          docs == other.docs;
+}
+
+/// 远程图片信息 (参考 pikapika RemoteImageInfo)
+class RemoteImageInfo {
+  final String originalName;
+  final String path;
+  final String fileServer;
+
+  /// 可选的请求头
+  final Map<String, String> headers;
+
+  const RemoteImageInfo({
+    required this.originalName,
+    required this.path,
+    required this.fileServer,
+    required this.headers,
+  });
+
+  @override
+  int get hashCode =>
+      originalName.hashCode ^
+      path.hashCode ^
+      fileServer.hashCode ^
+      headers.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is RemoteImageInfo &&
+          runtimeType == other.runtimeType &&
+          originalName == other.originalName &&
+          path == other.path &&
+          fileServer == other.fileServer &&
+          headers == other.headers;
+}
+
+/// 排序方式
+class SortOption {
+  final String value;
+  final String name;
+
+  const SortOption({required this.value, required this.name});
+
+  @override
+  int get hashCode => value.hashCode ^ name.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SortOption &&
+          runtimeType == other.runtimeType &&
+          value == other.value &&
+          name == other.name;
 }

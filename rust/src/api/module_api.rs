@@ -1,5 +1,8 @@
 use flutter_rust_bridge::frb;
-use crate::modules::{ModuleInfo, Category, ComicSimple, ComicDetail, ChapterImages, ComicListResponse, SearchParams};
+use crate::modules::{
+    ModuleInfo, Category, ComicSimple, ComicDetail, 
+    ComicsPage, EpPage, PicturePage, SortOption,
+};
 
 // 由于 ModuleManager 需要状态管理，我们使用全局单例
 use once_cell::sync::OnceCell;
@@ -80,15 +83,28 @@ pub async fn get_categories(module_id: String) -> anyhow::Result<Vec<Category>> 
     m.get_categories(&module_id).await
 }
 
-/// 获取漫画列表
+/// 获取排序选项
 #[frb]
-pub async fn get_comic_list(module_id: String, category_id: String, page: i32) -> anyhow::Result<ComicListResponse> {
+pub async fn get_sort_options(module_id: String) -> anyhow::Result<Vec<SortOption>> {
     let manager = get_module_manager()?;
     let m = manager.read().await;
-    m.get_comic_list(&module_id, &category_id, page).await
+    m.get_sort_options(&module_id).await
 }
 
-/// 获取漫画详情
+/// 获取漫画列表 (参考 pikapika comics)
+#[frb]
+pub async fn get_comics(
+    module_id: String, 
+    category_slug: String, 
+    sort_by: String,
+    page: i32
+) -> anyhow::Result<ComicsPage> {
+    let manager = get_module_manager()?;
+    let m = manager.read().await;
+    m.get_comics(&module_id, &category_slug, &sort_by, page).await
+}
+
+/// 获取漫画详情 (参考 pikapika album/comicInfo)
 #[frb]
 pub async fn get_comic_detail(module_id: String, comic_id: String) -> anyhow::Result<ComicDetail> {
     let manager = get_module_manager()?;
@@ -96,25 +112,38 @@ pub async fn get_comic_detail(module_id: String, comic_id: String) -> anyhow::Re
     m.get_comic_detail(&module_id, &comic_id).await
 }
 
-/// 获取章节图片
+/// 获取章节列表 (参考 pikapika eps)
 #[frb]
-pub async fn get_chapter_images(module_id: String, comic_id: String, chapter_id: String) -> anyhow::Result<ChapterImages> {
+pub async fn get_eps(module_id: String, comic_id: String, page: i32) -> anyhow::Result<EpPage> {
     let manager = get_module_manager()?;
     let m = manager.read().await;
-    m.get_chapter_images(&module_id, &comic_id, &chapter_id).await
+    m.get_eps(&module_id, &comic_id, page).await
 }
 
-/// 搜索漫画
+/// 获取章节图片 (参考 pikapika pictures)
 #[frb]
-pub async fn search_comics(module_id: String, keyword: String, page: i32) -> anyhow::Result<ComicListResponse> {
+pub async fn get_pictures(
+    module_id: String, 
+    comic_id: String, 
+    ep_id: String,
+    page: i32
+) -> anyhow::Result<PicturePage> {
     let manager = get_module_manager()?;
     let m = manager.read().await;
-    let params = SearchParams {
-        keyword,
-        page,
-        page_size: 20,
-    };
-    m.search(&module_id, params).await
+    m.get_pictures(&module_id, &comic_id, &ep_id, page).await
+}
+
+/// 搜索漫画 (参考 pikapika search)
+#[frb]
+pub async fn search_comics(
+    module_id: String, 
+    keyword: String, 
+    sort_by: String,
+    page: i32
+) -> anyhow::Result<ComicsPage> {
+    let manager = get_module_manager()?;
+    let m = manager.read().await;
+    m.search(&module_id, &keyword, &sort_by, page).await
 }
 
 /// 调用模块的任意函数（高级 API）

@@ -6,6 +6,13 @@ import 'package:comics/src/rust/api/module_api.dart';
 import 'package:comics/src/rust/modules/types.dart';
 import 'package:comics/src/rust/frb_generated.dart';
 
+/// 从 RemoteImageInfo 获取完整图片 URL
+String? getImageUrl(RemoteImageInfo? info) {
+  if (info == null) return null;
+  if (info.fileServer.isEmpty) return info.path;
+  return '${info.fileServer}${info.path}';
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await RustLib.init();
@@ -428,10 +435,10 @@ class _ModuleScreenState extends State<ModuleScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                if (category.cover != null)
+                if (category.thumb != null)
                   Expanded(
                     child: Image.network(
-                      category.cover!,
+                      getImageUrl(category.thumb)!,
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => const Icon(Icons.image, size: 40),
                     ),
@@ -441,7 +448,7 @@ class _ModuleScreenState extends State<ModuleScreen> {
                 Padding(
                   padding: const EdgeInsets.all(8),
                   child: Text(
-                    category.name,
+                    category.title,
                     textAlign: TextAlign.center,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -458,7 +465,7 @@ class _ModuleScreenState extends State<ModuleScreen> {
   void _openCategory(Category category) {
     // TODO: 打开分类漫画列表页面
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('打开分类: ${category.name}')),
+      SnackBar(content: Text('打开分类: ${category.title}')),
     );
   }
 }

@@ -42,18 +42,24 @@ Future<void> setModuleEnabled({
 Future<List<Category>> getCategories({required String moduleId}) =>
     RustLib.instance.api.crateApiModuleApiGetCategories(moduleId: moduleId);
 
-/// 获取漫画列表
-Future<ComicListResponse> getComicList({
+/// 获取排序选项
+Future<List<SortOption>> getSortOptions({required String moduleId}) =>
+    RustLib.instance.api.crateApiModuleApiGetSortOptions(moduleId: moduleId);
+
+/// 获取漫画列表 (参考 pikapika comics)
+Future<ComicsPage> getComics({
   required String moduleId,
-  required String categoryId,
+  required String categorySlug,
+  required String sortBy,
   required int page,
-}) => RustLib.instance.api.crateApiModuleApiGetComicList(
+}) => RustLib.instance.api.crateApiModuleApiGetComics(
   moduleId: moduleId,
-  categoryId: categoryId,
+  categorySlug: categorySlug,
+  sortBy: sortBy,
   page: page,
 );
 
-/// 获取漫画详情
+/// 获取漫画详情 (参考 pikapika album/comicInfo)
 Future<ComicDetail> getComicDetail({
   required String moduleId,
   required String comicId,
@@ -62,25 +68,40 @@ Future<ComicDetail> getComicDetail({
   comicId: comicId,
 );
 
-/// 获取章节图片
-Future<ChapterImages> getChapterImages({
+/// 获取章节列表 (参考 pikapika eps)
+Future<EpPage> getEps({
   required String moduleId,
   required String comicId,
-  required String chapterId,
-}) => RustLib.instance.api.crateApiModuleApiGetChapterImages(
+  required int page,
+}) => RustLib.instance.api.crateApiModuleApiGetEps(
   moduleId: moduleId,
   comicId: comicId,
-  chapterId: chapterId,
+  page: page,
 );
 
-/// 搜索漫画
-Future<ComicListResponse> searchComics({
+/// 获取章节图片 (参考 pikapika pictures)
+Future<PicturePage> getPictures({
+  required String moduleId,
+  required String comicId,
+  required String epId,
+  required int page,
+}) => RustLib.instance.api.crateApiModuleApiGetPictures(
+  moduleId: moduleId,
+  comicId: comicId,
+  epId: epId,
+  page: page,
+);
+
+/// 搜索漫画 (参考 pikapika search)
+Future<ComicsPage> searchComics({
   required String moduleId,
   required String keyword,
+  required String sortBy,
   required int page,
 }) => RustLib.instance.api.crateApiModuleApiSearchComics(
   moduleId: moduleId,
   keyword: keyword,
+  sortBy: sortBy,
   page: page,
 );
 

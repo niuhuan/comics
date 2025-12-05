@@ -39,25 +39,25 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   bool dco_decode_bool(dynamic raw);
 
   @protected
-  int dco_decode_box_autoadd_i_32(dynamic raw);
+  RemoteImageInfo dco_decode_box_autoadd_remote_image_info(dynamic raw);
 
   @protected
   Category dco_decode_category(dynamic raw);
 
   @protected
-  Chapter dco_decode_chapter(dynamic raw);
-
-  @protected
-  ChapterImages dco_decode_chapter_images(dynamic raw);
-
-  @protected
   ComicDetail dco_decode_comic_detail(dynamic raw);
 
   @protected
-  ComicListResponse dco_decode_comic_list_response(dynamic raw);
+  ComicSimple dco_decode_comic_simple(dynamic raw);
 
   @protected
-  ComicSimple dco_decode_comic_simple(dynamic raw);
+  ComicsPage dco_decode_comics_page(dynamic raw);
+
+  @protected
+  Ep dco_decode_ep(dynamic raw);
+
+  @protected
+  EpPage dco_decode_ep_page(dynamic raw);
 
   @protected
   HttpResponseDto dco_decode_http_response_dto(dynamic raw);
@@ -66,25 +66,22 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   int dco_decode_i_32(dynamic raw);
 
   @protected
-  ImageInfo dco_decode_image_info(dynamic raw);
-
-  @protected
   List<String> dco_decode_list_String(dynamic raw);
 
   @protected
   List<Category> dco_decode_list_category(dynamic raw);
 
   @protected
-  List<Chapter> dco_decode_list_chapter(dynamic raw);
-
-  @protected
   List<ComicSimple> dco_decode_list_comic_simple(dynamic raw);
 
   @protected
-  List<ImageInfo> dco_decode_list_image_info(dynamic raw);
+  List<Ep> dco_decode_list_ep(dynamic raw);
 
   @protected
   List<ModuleInfo> dco_decode_list_module_info(dynamic raw);
+
+  @protected
+  List<Picture> dco_decode_list_picture(dynamic raw);
 
   @protected
   List<int> dco_decode_list_prim_u_8_loose(dynamic raw);
@@ -99,25 +96,37 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<(String, String)> dco_decode_list_record_string_string(dynamic raw);
 
   @protected
-  ModuleInfo dco_decode_module_info(dynamic raw);
+  List<SortOption> dco_decode_list_sort_option(dynamic raw);
 
   @protected
-  Map<String, String>? dco_decode_opt_Map_String_String_None(dynamic raw);
+  ModuleInfo dco_decode_module_info(dynamic raw);
 
   @protected
   String? dco_decode_opt_String(dynamic raw);
 
   @protected
-  int? dco_decode_opt_box_autoadd_i_32(dynamic raw);
+  RemoteImageInfo? dco_decode_opt_box_autoadd_remote_image_info(dynamic raw);
 
   @protected
   PageInfo dco_decode_page_info(dynamic raw);
+
+  @protected
+  Picture dco_decode_picture(dynamic raw);
+
+  @protected
+  PicturePage dco_decode_picture_page(dynamic raw);
 
   @protected
   PropertyItem dco_decode_property_item(dynamic raw);
 
   @protected
   (String, String) dco_decode_record_string_string(dynamic raw);
+
+  @protected
+  RemoteImageInfo dco_decode_remote_image_info(dynamic raw);
+
+  @protected
+  SortOption dco_decode_sort_option(dynamic raw);
 
   @protected
   int dco_decode_u_16(dynamic raw);
@@ -146,27 +155,27 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   bool sse_decode_bool(SseDeserializer deserializer);
 
   @protected
-  int sse_decode_box_autoadd_i_32(SseDeserializer deserializer);
+  RemoteImageInfo sse_decode_box_autoadd_remote_image_info(
+    SseDeserializer deserializer,
+  );
 
   @protected
   Category sse_decode_category(SseDeserializer deserializer);
 
   @protected
-  Chapter sse_decode_chapter(SseDeserializer deserializer);
-
-  @protected
-  ChapterImages sse_decode_chapter_images(SseDeserializer deserializer);
-
-  @protected
   ComicDetail sse_decode_comic_detail(SseDeserializer deserializer);
 
   @protected
-  ComicListResponse sse_decode_comic_list_response(
-    SseDeserializer deserializer,
-  );
+  ComicSimple sse_decode_comic_simple(SseDeserializer deserializer);
 
   @protected
-  ComicSimple sse_decode_comic_simple(SseDeserializer deserializer);
+  ComicsPage sse_decode_comics_page(SseDeserializer deserializer);
+
+  @protected
+  Ep sse_decode_ep(SseDeserializer deserializer);
+
+  @protected
+  EpPage sse_decode_ep_page(SseDeserializer deserializer);
 
   @protected
   HttpResponseDto sse_decode_http_response_dto(SseDeserializer deserializer);
@@ -175,25 +184,22 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   int sse_decode_i_32(SseDeserializer deserializer);
 
   @protected
-  ImageInfo sse_decode_image_info(SseDeserializer deserializer);
-
-  @protected
   List<String> sse_decode_list_String(SseDeserializer deserializer);
 
   @protected
   List<Category> sse_decode_list_category(SseDeserializer deserializer);
 
   @protected
-  List<Chapter> sse_decode_list_chapter(SseDeserializer deserializer);
-
-  @protected
   List<ComicSimple> sse_decode_list_comic_simple(SseDeserializer deserializer);
 
   @protected
-  List<ImageInfo> sse_decode_list_image_info(SseDeserializer deserializer);
+  List<Ep> sse_decode_list_ep(SseDeserializer deserializer);
 
   @protected
   List<ModuleInfo> sse_decode_list_module_info(SseDeserializer deserializer);
+
+  @protected
+  List<Picture> sse_decode_list_picture(SseDeserializer deserializer);
 
   @protected
   List<int> sse_decode_list_prim_u_8_loose(SseDeserializer deserializer);
@@ -212,21 +218,27 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  ModuleInfo sse_decode_module_info(SseDeserializer deserializer);
+  List<SortOption> sse_decode_list_sort_option(SseDeserializer deserializer);
 
   @protected
-  Map<String, String>? sse_decode_opt_Map_String_String_None(
-    SseDeserializer deserializer,
-  );
+  ModuleInfo sse_decode_module_info(SseDeserializer deserializer);
 
   @protected
   String? sse_decode_opt_String(SseDeserializer deserializer);
 
   @protected
-  int? sse_decode_opt_box_autoadd_i_32(SseDeserializer deserializer);
+  RemoteImageInfo? sse_decode_opt_box_autoadd_remote_image_info(
+    SseDeserializer deserializer,
+  );
 
   @protected
   PageInfo sse_decode_page_info(SseDeserializer deserializer);
+
+  @protected
+  Picture sse_decode_picture(SseDeserializer deserializer);
+
+  @protected
+  PicturePage sse_decode_picture_page(SseDeserializer deserializer);
 
   @protected
   PropertyItem sse_decode_property_item(SseDeserializer deserializer);
@@ -235,6 +247,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   (String, String) sse_decode_record_string_string(
     SseDeserializer deserializer,
   );
+
+  @protected
+  RemoteImageInfo sse_decode_remote_image_info(SseDeserializer deserializer);
+
+  @protected
+  SortOption sse_decode_sort_option(SseDeserializer deserializer);
 
   @protected
   int sse_decode_u_16(SseDeserializer deserializer);
@@ -267,28 +285,28 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_bool(bool self, SseSerializer serializer);
 
   @protected
-  void sse_encode_box_autoadd_i_32(int self, SseSerializer serializer);
+  void sse_encode_box_autoadd_remote_image_info(
+    RemoteImageInfo self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_category(Category self, SseSerializer serializer);
 
   @protected
-  void sse_encode_chapter(Chapter self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_chapter_images(ChapterImages self, SseSerializer serializer);
-
-  @protected
   void sse_encode_comic_detail(ComicDetail self, SseSerializer serializer);
 
   @protected
-  void sse_encode_comic_list_response(
-    ComicListResponse self,
-    SseSerializer serializer,
-  );
+  void sse_encode_comic_simple(ComicSimple self, SseSerializer serializer);
 
   @protected
-  void sse_encode_comic_simple(ComicSimple self, SseSerializer serializer);
+  void sse_encode_comics_page(ComicsPage self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_ep(Ep self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_ep_page(EpPage self, SseSerializer serializer);
 
   @protected
   void sse_encode_http_response_dto(
@@ -300,16 +318,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_i_32(int self, SseSerializer serializer);
 
   @protected
-  void sse_encode_image_info(ImageInfo self, SseSerializer serializer);
-
-  @protected
   void sse_encode_list_String(List<String> self, SseSerializer serializer);
 
   @protected
   void sse_encode_list_category(List<Category> self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_list_chapter(List<Chapter> self, SseSerializer serializer);
 
   @protected
   void sse_encode_list_comic_simple(
@@ -318,16 +330,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  void sse_encode_list_image_info(
-    List<ImageInfo> self,
-    SseSerializer serializer,
-  );
+  void sse_encode_list_ep(List<Ep> self, SseSerializer serializer);
 
   @protected
   void sse_encode_list_module_info(
     List<ModuleInfo> self,
     SseSerializer serializer,
   );
+
+  @protected
+  void sse_encode_list_picture(List<Picture> self, SseSerializer serializer);
 
   @protected
   void sse_encode_list_prim_u_8_loose(List<int> self, SseSerializer serializer);
@@ -351,22 +363,31 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  void sse_encode_module_info(ModuleInfo self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_opt_Map_String_String_None(
-    Map<String, String>? self,
+  void sse_encode_list_sort_option(
+    List<SortOption> self,
     SseSerializer serializer,
   );
+
+  @protected
+  void sse_encode_module_info(ModuleInfo self, SseSerializer serializer);
 
   @protected
   void sse_encode_opt_String(String? self, SseSerializer serializer);
 
   @protected
-  void sse_encode_opt_box_autoadd_i_32(int? self, SseSerializer serializer);
+  void sse_encode_opt_box_autoadd_remote_image_info(
+    RemoteImageInfo? self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_page_info(PageInfo self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_picture(Picture self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_picture_page(PicturePage self, SseSerializer serializer);
 
   @protected
   void sse_encode_property_item(PropertyItem self, SseSerializer serializer);
@@ -376,6 +397,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     (String, String) self,
     SseSerializer serializer,
   );
+
+  @protected
+  void sse_encode_remote_image_info(
+    RemoteImageInfo self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_sort_option(SortOption self, SseSerializer serializer);
 
   @protected
   void sse_encode_u_16(int self, SseSerializer serializer);

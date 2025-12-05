@@ -3,7 +3,7 @@ use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use anyhow::Result;
-use sea_orm::{EntityTrait, QueryFilter, ColumnTrait, ActiveModelTrait, Set};
+use sea_orm::{EntityTrait, ActiveModelTrait, Set};
 use chrono::Utc;
 
 use crate::database::{self, entities::module_info};
@@ -12,12 +12,14 @@ use super::types::*;
 
 /// 模块运行时实例
 struct ModuleInstance {
+    #[allow(dead_code)]
     info: ModuleInfo,
     runtime: JsRuntime,
 }
 
 /// 模块管理器
 pub struct ModuleManager {
+    #[allow(dead_code)]
     modules_dir: std::path::PathBuf,
     loader: ModuleLoader,
     instances: RwLock<HashMap<String, Arc<ModuleInstance>>>,
@@ -46,7 +48,9 @@ impl ModuleManager {
             id: m.id,
             name: m.name,
             version: m.version,
+            author: String::new(),
             description: m.description,
+            icon: None,
             enabled: m.enabled,
         }).collect())
     }
@@ -108,7 +112,9 @@ impl ModuleManager {
             id: metadata.id,
             name: metadata.name,
             version: metadata.version,
+            author: String::new(),
             description: metadata.description,
+            icon: None,
             enabled: true,
         })
     }
@@ -150,7 +156,9 @@ impl ModuleManager {
                 id: module.id,
                 name: module.name,
                 version: module.version,
+                author: String::new(),
                 description: module.description,
+                icon: None,
                 enabled: module.enabled,
             },
             runtime,
@@ -220,14 +228,22 @@ impl ModuleManager {
         Ok(categories)
     }
 
-    /// 获取漫画列表
-    pub async fn get_comic_list(&self, module_id: &str, category_id: &str, page: i32) -> Result<ComicListResponse> {
+    /// 获取排序选项
+    pub async fn get_sort_options(&self, module_id: &str) -> Result<Vec<SortOption>> {
+        let result = self.call_function(module_id, "getSortOptions", "{}").await?;
+        let options: Vec<SortOption> = serde_json::from_str(&result)?;
+        Ok(options)
+    }
+
+    /// 获取漫画列表 (参考 pikapika comics)
+    pub async fn get_comics(&self, module_id: &str, category_slug: &str, sort_by: &str, page: i32) -> Result<ComicsPage> {
         let args = serde_json::json!({
-            "categoryId": category_id,
+            "categorySlug": category_slug,
+            "sortBy": sort_by,
             "page": page
         });
-        let result = self.call_function(module_id, "getComicList", &args.to_string()).await?;
-        let response: ComicListResponse = serde_json::from_str(&result)?;
+        let result = self.call_function(module_id, "getComics", &args.to_string()).await?;
+        let response: ComicsPage = serde_json::from_str(&result)?;
         Ok(response)
     }
 
@@ -241,22 +257,38 @@ impl ModuleManager {
         Ok(detail)
     }
 
-    /// 获取章节图片
-    pub async fn get_chapter_images(&self, module_id: &str, comic_id: &str, chapter_id: &str) -> Result<ChapterImages> {
+    /// 获取章节列表 (参考 pikapika eps)
+    pub async fn get_eps(&self, module_id: &str, comic_id: &str, page: i32) -> Result<EpPage> {
         let args = serde_json::json!({
             "comicId": comic_id,
-            "chapterId": chapter_id
+            "page": page
         });
-        let result = self.call_function(module_id, "getChapterImages", &args.to_string()).await?;
-        let images: ChapterImages = serde_json::from_str(&result)?;
-        Ok(images)
+        let result = self.call_function(module_id, "getEps", &args.to_string()).await?;
+        let eps: EpPage = serde_json::from_str(&result)?;
+        Ok(eps)
     }
 
-    /// 搜索漫画
-    pub async fn search(&self, module_id: &str, params: SearchParams) -> Result<ComicListResponse> {
-        let args = serde_json::to_string(&params)?;
-        let result = self.call_function(module_id, "search", &args).await?;
-        let response: ComicListResponse = serde_json::from_str(&result)?;
+    /// 获取章节图片 (参考 pikapika pictures)
+    pub async fn get_pictures(&self, module_id: &str, comic_id: &str, ep_id: &str, page: i32) -> Result<PicturePage> {
+        let args = serde_json::json!({
+            "comicId": comic_id,
+            "epId": ep_id,
+            "page": page
+        });
+        let result = self.call_function(module_id, "getPictures", &args.to_string()).await?;
+        let pictures: PicturePage = serde_json::from_str(&result)?;
+        Ok(pictures)
+    }
+
+    /// 搜索漫画 (参考 pikapika search)
+    pub async fn search(&self, module_id: &str, keyword: &str, sort_by: &str, page: i32) -> Result<ComicsPage> {
+        let args = serde_json::json!({
+            "keyword": keyword,
+            "sortBy": sort_by,
+            "page": page
+        });
+        let result = self.call_function(module_id, "search", &args.to_string()).await?;
+        let response: ComicsPage = serde_json::from_str(&result)?;
         Ok(response)
     }
 
