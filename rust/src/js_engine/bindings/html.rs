@@ -98,7 +98,7 @@ pub fn register(ctx: &Ctx<'_>) -> Result<()> {
     
     globals.set("__html__", html_obj)?;
     
-    tracing::info!("[JS HTML] HTML bindings registered");
+    tracing::debug!("[JS HTML] HTML bindings registered");
     
     Ok(())
 }

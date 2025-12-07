@@ -137,12 +137,12 @@ impl JsRuntime {
     /// 调用模块中的函数，返回 JSON 字符串
     /// 支持同步函数和 async 函数（返回 Promise）
     pub fn call_function_json(&self, func_name: &str, args_json: &str) -> Result<String> {
-        tracing::info!("call_function_json START: func={}", func_name);
+        tracing::debug!("call_function_json START: func={}", func_name);
         
         self.context.with(|ctx| {
-            tracing::info!("Inside context.with");
+            tracing::debug!("Inside context.with");
             let globals = ctx.globals();
-            tracing::info!("Got globals");
+            tracing::debug!("Got globals");
             
             let func: Function = match globals.get(func_name) {
                 Ok(f) => f,
@@ -152,22 +152,22 @@ impl JsRuntime {
                 }
             };
             
-            tracing::info!("Got function: {}", func_name);
+            tracing::debug!("Got function: {}", func_name);
             
             // 解析 JSON 参数
             let json: Object = globals.get("JSON")?;
             let parse: Function = json.get("parse")?;
             let args: Value = parse.call((args_json,))?;
             
-            tracing::info!("Parsed args, calling function...");
+            tracing::debug!("Parsed args, calling function...");
             
             // 调用函数
             let result: Value = func.call((args,))?;
-            tracing::info!("Function called, result type: {:?}", result.type_of());
+            tracing::debug!("Function called, result type: {:?}", result.type_of());
             
             // 检查是否是 Promise
             let final_value: Value = if result.is_promise() {
-                tracing::info!("Result is a Promise, waiting for resolution...");
+                tracing::debug!("Result is a Promise, waiting for resolution...");
                 
                 // 使用 Promise::from_value 转换
                 let promise = Promise::from_value(result)?;
@@ -176,7 +176,7 @@ impl JsRuntime {
                 // finish() 会运行 QuickJS job queue 直到 Promise resolve 或 reject
                 match promise.finish::<Value>() {
                     Ok(resolved_value) => {
-                        tracing::info!("Promise resolved, value type: {:?}", resolved_value.type_of());
+                        tracing::debug!("Promise resolved, value type: {:?}", resolved_value.type_of());
                         resolved_value
                     }
                     Err(rquickjs::Error::WouldBlock) => {
@@ -198,7 +198,7 @@ impl JsRuntime {
                     }
                 }
             } else {
-                tracing::info!("Result is not a Promise, using directly");
+                tracing::debug!("Result is not a Promise, using directly");
                 result
             };
             
@@ -206,7 +206,7 @@ impl JsRuntime {
             let stringify: Function = json.get("stringify")?;
             let json_str: String = stringify.call((final_value,))?;
             
-            tracing::info!("Serialized result: {} bytes", json_str.len());
+            tracing::debug!("Serialized result: {} bytes", json_str.len());
             
             Ok(json_str)
         })

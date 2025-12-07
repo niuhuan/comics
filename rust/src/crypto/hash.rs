@@ -2,6 +2,10 @@ use sha2::{Sha256, Sha512, Digest as ShaDigest};
 use base64::{Engine as _, engine::general_purpose};
 use aes::Aes256;
 use aes::cipher::{BlockDecrypt, KeyInit, generic_array::GenericArray};
+use hmac::Hmac;
+use hmac::digest::Mac;
+
+type HmacSha256 = Hmac<Sha256>;
 
 /// 计算 MD5 哈希
 pub fn md5_hash(data: &[u8]) -> String {
@@ -154,4 +158,26 @@ pub fn aes_ecb_decrypt_base64(data: &str, key: &str) -> anyhow::Result<String> {
     let decrypted = aes_ecb_decrypt(&encrypted, key_bytes)?;
     String::from_utf8(decrypted)
         .map_err(|e| anyhow::anyhow!("UTF-8 decode error: {}", e))
+}
+
+/// HMAC-SHA256 签名
+pub fn hmac_sha256(data: &str, key: &str) -> String {
+    let mut mac = <HmacSha256 as Mac>::new_from_slice(key.as_bytes())
+        .expect("HMAC can take key of any size");
+    mac.update(data.as_bytes());
+    let result = mac.finalize();
+    hex::encode(result.into_bytes())
+}
+
+#[cfg(test)]
+mod hmac_tests {
+    use super::*;
+
+    #[test]
+    fn test_hmac_sha256() {
+        // 测试 HMAC-SHA256
+        let result = hmac_sha256("hello", "secret");
+        assert!(!result.is_empty());
+        assert_eq!(result.len(), 64); // SHA256 输出 32 字节 = 64 hex 字符
+    }
 }

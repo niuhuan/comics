@@ -40,6 +40,7 @@ impl HttpClient {
             .timeout(Duration::from_secs(30))
             .connect_timeout(Duration::from_secs(10))
             .pool_max_idle_per_host(10)
+            .danger_accept_invalid_certs(true)  // 禁用证书验证（用于分流IP访问）
             .build()?;
         
         Ok(Self { client })
@@ -49,7 +50,8 @@ impl HttpClient {
         let mut builder = Client::builder()
             .timeout(Duration::from_secs(timeout_secs))
             .connect_timeout(Duration::from_secs(10))
-            .pool_max_idle_per_host(10);
+            .pool_max_idle_per_host(10)
+            .danger_accept_invalid_certs(true);  // 禁用证书验证（用于分流IP访问）
         
         if let Some(ua) = user_agent {
             builder = builder.user_agent(ua);

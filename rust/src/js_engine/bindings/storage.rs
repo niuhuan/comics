@@ -137,7 +137,7 @@ pub fn register(ctx: &Ctx<'_>) -> Result<()> {
     
     let _: Value = ctx.eval(storage_helper)?;
     
-    tracing::info!("[JS Storage] Storage bindings registered");
+    tracing::debug!("[JS Storage] Storage bindings registered");
     
     Ok(())
 }

@@ -106,7 +106,7 @@ impl ModuleManager {
             active_model.insert(&*conn).await?;
         }
         
-        tracing::info!("Module registered: {} v{}", metadata.name, metadata.version);
+        tracing::debug!("Module registered: {} v{}", metadata.name, metadata.version);
         
         Ok(ModuleInfo {
             id: metadata.id,
@@ -169,7 +169,7 @@ impl ModuleManager {
             instances.insert(module_id.to_string(), instance);
         }
         
-        tracing::info!("Module loaded: {}", module_id);
+        tracing::debug!("Module loaded: {}", module_id);
         
         Ok(())
     }
@@ -178,7 +178,7 @@ impl ModuleManager {
     pub async fn unload_module(&self, module_id: &str) -> Result<()> {
         let mut instances = self.instances.write().await;
         instances.remove(module_id);
-        tracing::info!("Module unloaded: {}", module_id);
+        tracing::debug!("Module unloaded: {}", module_id);
         Ok(())
     }
 
@@ -209,7 +209,7 @@ impl ModuleManager {
 
     /// 调用模块函数
     pub async fn call_function(&self, module_id: &str, func_name: &str, args_json: &str) -> Result<String> {
-        tracing::info!("call_function: module={}, func={}, args={}", module_id, func_name, args_json);
+        tracing::debug!("call_function: module={}, func={}, args={}", module_id, func_name, args_json);
         
         // 确保模块已加载
         self.load_module(module_id).await?;
@@ -218,20 +218,20 @@ impl ModuleManager {
         let instance = instances.get(module_id)
             .ok_or_else(|| anyhow::anyhow!("Module not loaded: {}", module_id))?;
         
-        tracing::info!("Calling JS function: {}", func_name);
+        tracing::debug!("Calling JS function: {}", func_name);
         let result = instance.runtime.call_function_json(func_name, args_json)?;
-        tracing::info!("JS function returned: {} bytes", result.len());
+        tracing::debug!("JS function returned: {} bytes", result.len());
         
         Ok(result)
     }
 
     /// 获取分类列表
     pub async fn get_categories(&self, module_id: &str) -> Result<Vec<Category>> {
-        tracing::info!("Getting categories for module: {}", module_id);
+        tracing::debug!("Getting categories for module: {}", module_id);
         let result = self.call_function(module_id, "getCategories", "{}").await?;
-        tracing::info!("getCategories result: {}", &result[..std::cmp::min(500, result.len())]);
+        tracing::debug!("getCategories result: {}", &result[..std::cmp::min(500, result.len())]);
         let categories: Vec<Category> = serde_json::from_str(&result)?;
-        tracing::info!("Parsed {} categories", categories.len());
+        tracing::debug!("Parsed {} categories", categories.len());
         Ok(categories)
     }
 

@@ -10,7 +10,7 @@ pub fn register(ctx: &Ctx<'_>) -> Result<()> {
     // 注册同步的 HTTP 请求函数
     // 这个函数会阻塞等待 HTTP 请求完成
     globals.set("__native_http_request_sync__", Function::new(ctx.clone(), |config_json: String| -> String {
-        tracing::info!("[JS HTTP] Received request: {}", &config_json[..config_json.len().min(200)]);
+        tracing::debug!("[JS HTTP] Received request: {}", &config_json[..config_json.len().min(200)]);
         
         // 解析请求配置
         let request: HttpRequest = match serde_json::from_str(&config_json) {
@@ -23,7 +23,7 @@ pub fn register(ctx: &Ctx<'_>) -> Result<()> {
             }
         };
         
-        tracing::info!("[JS HTTP] Making {} request to: {}", request.method, request.url);
+        tracing::debug!("[JS HTTP] Making {} request to: {}", request.method, request.url);
         
         // 使用 tokio 的阻塞线程执行异步请求
         // 注意：这会阻塞当前线程，但 QuickJS 是单线程的所以没问题
@@ -37,7 +37,7 @@ pub fn register(ctx: &Ctx<'_>) -> Result<()> {
         
         match result {
             Ok(Ok(response)) => {
-                tracing::info!("[JS HTTP] Response status: {}", response.status);
+                tracing::debug!("[JS HTTP] Response status: {}", response.status);
                 serde_json::to_string(&response).unwrap_or_else(|e| {
                     serde_json::to_string(&serde_json::json!({
                         "error": format!("Failed to serialize response: {}", e)
@@ -45,9 +45,9 @@ pub fn register(ctx: &Ctx<'_>) -> Result<()> {
                 })
             }
             Ok(Err(e)) => {
-                tracing::error!("[JS HTTP] Request failed: {}", e);
+                tracing::error!("[JS HTTP] Request failed: {:?}", e);
                 serde_json::to_string(&serde_json::json!({
-                    "error": format!("Request failed: {}", e)
+                    "error": format!("Request failed: {:?}", e)
                 })).unwrap_or_default()
             }
             Err(_) => {
@@ -97,7 +97,7 @@ pub fn register(ctx: &Ctx<'_>) -> Result<()> {
     
     let _: Value = ctx.eval(http_helper)?;
     
-    tracing::info!("[JS HTTP] HTTP bindings registered");
+    tracing::debug!("[JS HTTP] HTTP bindings registered");
     
     Ok(())
 }

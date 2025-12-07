@@ -11,7 +11,7 @@ pub fn register(ctx: &Ctx<'_>) -> Result<()> {
     // console.log
     console.set("log", Function::new(ctx.clone(), |args: Rest<String>| {
         let message = args.0.join(" ");
-        tracing::info!("[JS] {}", message);
+        tracing::debug!("[JS] {}", message);
     })?)?;
     
     // console.error

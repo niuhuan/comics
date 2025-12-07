@@ -29,7 +29,7 @@ pub fn register_all(ctx: &Ctx<'_>) -> Result<()> {
     
     let _: Value = ctx.eval(runtime_obj)?;
     
-    tracing::info!("[JS Bindings] All bindings registered, runtime object created");
+    tracing::debug!("[JS Bindings] All bindings registered, runtime object created");
     
     Ok(())
 }

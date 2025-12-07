@@ -24,6 +24,11 @@ pub fn register(ctx: &Ctx<'_>) -> Result<()> {
         crypto::sha512_string(&data)
     })?)?;
     
+    // crypto.hmacSha256(data, key) -> string (hex encoded)
+    crypto_obj.set("hmacSha256", Function::new(ctx.clone(), |data: String, key: String| -> String {
+        crypto::hmac_sha256(&data, &key)
+    })?)?;
+    
     // crypto.base64Encode(data) -> string
     crypto_obj.set("base64Encode", Function::new(ctx.clone(), |data: String| -> String {
         crypto::base64_encode_string(&data)
@@ -60,7 +65,7 @@ pub fn register(ctx: &Ctx<'_>) -> Result<()> {
     
     globals.set("__crypto__", crypto_obj)?;
     
-    tracing::info!("[JS Crypto] Crypto bindings registered");
+    tracing::debug!("[JS Crypto] Crypto bindings registered");
     
     Ok(())
 }
