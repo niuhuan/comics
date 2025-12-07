@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:comics/src/rust/api/module_api.dart';
 import 'package:comics/src/rust/modules/types.dart';
+import 'package:comics/src/cached_image_widget.dart';
 import 'comic_info_screen.dart';
 
 /// 从 RemoteImageInfo 获取完整图片 URL
@@ -237,6 +238,7 @@ class _ComicsScreenState extends State<ComicsScreen> {
           }
           return _ComicCard(
             comic: _comics[index],
+            moduleId: widget.moduleId,
             onTap: () => _openComic(_comics[index]),
           );
         },
@@ -248,17 +250,17 @@ class _ComicsScreenState extends State<ComicsScreen> {
 /// 漫画卡片
 class _ComicCard extends StatelessWidget {
   final ComicSimple comic;
+  final String moduleId;
   final VoidCallback onTap;
 
   const _ComicCard({
     required this.comic,
+    required this.moduleId,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final thumbUrl = getImageUrl(comic.thumb);
-    
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -270,22 +272,20 @@ class _ComicCard extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  Image.network(
-                    thumbUrl,
+                  CachedImageWidget(
+                    imageInfo: comic.thumb,
+                    moduleId: moduleId,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
+                    placeholder: Container(
+                      color: Colors.grey[200],
+                      child: const Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                    errorWidget: Container(
                       color: Colors.grey[200],
                       child: const Icon(Icons.broken_image, size: 40),
                     ),
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return Container(
-                        color: Colors.grey[200],
-                        child: const Center(
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      );
-                    },
                   ),
                   // 完结标识
                   if (comic.finished)

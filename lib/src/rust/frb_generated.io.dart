@@ -5,6 +5,7 @@
 
 import 'api/crypto_api.dart';
 import 'api/http_api.dart';
+import 'api/image_cache_api.dart';
 import 'api/init.dart';
 import 'api/module_api.dart';
 import 'api/property_api.dart';
@@ -37,6 +38,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   bool dco_decode_bool(dynamic raw);
 
   @protected
+  PlatformInt64 dco_decode_box_autoadd_i_64(dynamic raw);
+
+  @protected
   RemoteImageInfo dco_decode_box_autoadd_remote_image_info(dynamic raw);
 
   @protected
@@ -62,6 +66,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   int dco_decode_i_32(dynamic raw);
+
+  @protected
+  PlatformInt64 dco_decode_i_64(dynamic raw);
+
+  @protected
+  ImageCacheStats dco_decode_image_cache_stats(dynamic raw);
 
   @protected
   List<String> dco_decode_list_String(dynamic raw);
@@ -101,6 +111,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   String? dco_decode_opt_String(dynamic raw);
+
+  @protected
+  PlatformInt64? dco_decode_opt_box_autoadd_i_64(dynamic raw);
 
   @protected
   RemoteImageInfo? dco_decode_opt_box_autoadd_remote_image_info(dynamic raw);
@@ -143,8 +156,7 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   Map<String, String> sse_decode_Map_String_String_None(
-    SseDeserializer deserializer,
-  );
+      SseDeserializer deserializer);
 
   @protected
   String sse_decode_String(SseDeserializer deserializer);
@@ -153,9 +165,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   bool sse_decode_bool(SseDeserializer deserializer);
 
   @protected
+  PlatformInt64 sse_decode_box_autoadd_i_64(SseDeserializer deserializer);
+
+  @protected
   RemoteImageInfo sse_decode_box_autoadd_remote_image_info(
-    SseDeserializer deserializer,
-  );
+      SseDeserializer deserializer);
 
   @protected
   Category sse_decode_category(SseDeserializer deserializer);
@@ -180,6 +194,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   int sse_decode_i_32(SseDeserializer deserializer);
+
+  @protected
+  PlatformInt64 sse_decode_i_64(SseDeserializer deserializer);
+
+  @protected
+  ImageCacheStats sse_decode_image_cache_stats(SseDeserializer deserializer);
 
   @protected
   List<String> sse_decode_list_String(SseDeserializer deserializer);
@@ -207,13 +227,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<PropertyItem> sse_decode_list_property_item(
-    SseDeserializer deserializer,
-  );
+      SseDeserializer deserializer);
 
   @protected
   List<(String, String)> sse_decode_list_record_string_string(
-    SseDeserializer deserializer,
-  );
+      SseDeserializer deserializer);
 
   @protected
   List<SortOption> sse_decode_list_sort_option(SseDeserializer deserializer);
@@ -225,9 +243,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String? sse_decode_opt_String(SseDeserializer deserializer);
 
   @protected
+  PlatformInt64? sse_decode_opt_box_autoadd_i_64(SseDeserializer deserializer);
+
+  @protected
   RemoteImageInfo? sse_decode_opt_box_autoadd_remote_image_info(
-    SseDeserializer deserializer,
-  );
+      SseDeserializer deserializer);
 
   @protected
   PageInfo sse_decode_page_info(SseDeserializer deserializer);
@@ -243,8 +263,7 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   (String, String) sse_decode_record_string_string(
-    SseDeserializer deserializer,
-  );
+      SseDeserializer deserializer);
 
   @protected
   RemoteImageInfo sse_decode_remote_image_info(SseDeserializer deserializer);
@@ -266,15 +285,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_AnyhowException(
-    AnyhowException self,
-    SseSerializer serializer,
-  );
+      AnyhowException self, SseSerializer serializer);
 
   @protected
   void sse_encode_Map_String_String_None(
-    Map<String, String> self,
-    SseSerializer serializer,
-  );
+      Map<String, String> self, SseSerializer serializer);
 
   @protected
   void sse_encode_String(String self, SseSerializer serializer);
@@ -283,10 +298,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_bool(bool self, SseSerializer serializer);
 
   @protected
+  void sse_encode_box_autoadd_i_64(
+      PlatformInt64 self, SseSerializer serializer);
+
+  @protected
   void sse_encode_box_autoadd_remote_image_info(
-    RemoteImageInfo self,
-    SseSerializer serializer,
-  );
+      RemoteImageInfo self, SseSerializer serializer);
 
   @protected
   void sse_encode_category(Category self, SseSerializer serializer);
@@ -308,12 +325,17 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_http_response_dto(
-    HttpResponseDto self,
-    SseSerializer serializer,
-  );
+      HttpResponseDto self, SseSerializer serializer);
 
   @protected
   void sse_encode_i_32(int self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_i_64(PlatformInt64 self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_image_cache_stats(
+      ImageCacheStats self, SseSerializer serializer);
 
   @protected
   void sse_encode_list_String(List<String> self, SseSerializer serializer);
@@ -323,18 +345,14 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_list_comic_simple(
-    List<ComicSimple> self,
-    SseSerializer serializer,
-  );
+      List<ComicSimple> self, SseSerializer serializer);
 
   @protected
   void sse_encode_list_ep(List<Ep> self, SseSerializer serializer);
 
   @protected
   void sse_encode_list_module_info(
-    List<ModuleInfo> self,
-    SseSerializer serializer,
-  );
+      List<ModuleInfo> self, SseSerializer serializer);
 
   @protected
   void sse_encode_list_picture(List<Picture> self, SseSerializer serializer);
@@ -344,27 +362,19 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_list_prim_u_8_strict(
-    Uint8List self,
-    SseSerializer serializer,
-  );
+      Uint8List self, SseSerializer serializer);
 
   @protected
   void sse_encode_list_property_item(
-    List<PropertyItem> self,
-    SseSerializer serializer,
-  );
+      List<PropertyItem> self, SseSerializer serializer);
 
   @protected
   void sse_encode_list_record_string_string(
-    List<(String, String)> self,
-    SseSerializer serializer,
-  );
+      List<(String, String)> self, SseSerializer serializer);
 
   @protected
   void sse_encode_list_sort_option(
-    List<SortOption> self,
-    SseSerializer serializer,
-  );
+      List<SortOption> self, SseSerializer serializer);
 
   @protected
   void sse_encode_module_info(ModuleInfo self, SseSerializer serializer);
@@ -373,10 +383,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_opt_String(String? self, SseSerializer serializer);
 
   @protected
+  void sse_encode_opt_box_autoadd_i_64(
+      PlatformInt64? self, SseSerializer serializer);
+
+  @protected
   void sse_encode_opt_box_autoadd_remote_image_info(
-    RemoteImageInfo? self,
-    SseSerializer serializer,
-  );
+      RemoteImageInfo? self, SseSerializer serializer);
 
   @protected
   void sse_encode_page_info(PageInfo self, SseSerializer serializer);
@@ -392,15 +404,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_record_string_string(
-    (String, String) self,
-    SseSerializer serializer,
-  );
+      (String, String) self, SseSerializer serializer);
 
   @protected
   void sse_encode_remote_image_info(
-    RemoteImageInfo self,
-    SseSerializer serializer,
-  );
+      RemoteImageInfo self, SseSerializer serializer);
 
   @protected
   void sse_encode_sort_option(SortOption self, SseSerializer serializer);
@@ -426,9 +434,9 @@ class RustLibWire implements BaseWire {
 
   /// Holds the symbol lookup function.
   final ffi.Pointer<T> Function<T extends ffi.NativeType>(String symbolName)
-  _lookup;
+      _lookup;
 
   /// The symbols are looked up in [dynamicLibrary].
   RustLibWire(ffi.DynamicLibrary dynamicLibrary)
-    : _lookup = dynamicLibrary.lookup;
+      : _lookup = dynamicLibrary.lookup;
 }

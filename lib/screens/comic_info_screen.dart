@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:comics/src/rust/api/module_api.dart';
 import 'package:comics/src/rust/modules/types.dart';
-import 'comics_screen.dart';
+import 'package:comics/src/cached_image_widget.dart';
 import 'comic_reader_screen.dart';
 
 /// 漫画详情页面
@@ -194,8 +194,6 @@ class _ComicInfoScreenState extends State<ComicInfoScreen> {
   }
 
   Widget _buildInfoCard(ComicDetail comic) {
-    final thumbUrl = getImageUrl(comic.thumb);
-    
     return Container(
       padding: const EdgeInsets.all(16),
       child: Row(
@@ -204,12 +202,21 @@ class _ComicInfoScreenState extends State<ComicInfoScreen> {
           // 封面
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: Image.network(
-              thumbUrl,
+            child: CachedImageWidget(
+              imageInfo: comic.thumb,
+              moduleId: widget.moduleId,
               width: 120,
               height: 160,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
+              placeholder: Container(
+                width: 120,
+                height: 160,
+                color: Colors.grey[200],
+                child: const Center(
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+              errorWidget: Container(
                 width: 120,
                 height: 160,
                 color: Colors.grey[200],

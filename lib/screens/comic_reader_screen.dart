@@ -4,7 +4,9 @@ import 'package:flutter/services.dart';
 import 'package:comics/src/rust/api/module_api.dart';
 import 'package:comics/src/rust/api/property_api.dart';
 import 'package:comics/src/rust/modules/types.dart';
-import 'comics_screen.dart';
+import 'package:comics/src/cached_image_widget.dart';
+import 'package:comics/src/image_cache_manager.dart';
+import 'comics_screen.dart' show getImageUrl;
 
 /// 阅读器模式
 enum ReaderMode {
@@ -941,13 +943,21 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
   
   /// 预加载图片
   void _preloadImages(int currentIndex) {
-    // 预加载前后各2张图片
+    // 预加载前后各2张图片（使用自定义缓存）
+    final cacheManager = ImageCacheManager();
     for (int i = currentIndex - 2; i <= currentIndex + 2; i++) {
       if (i >= 0 && i < _pictures.length && i != currentIndex) {
         final picture = _pictures[i];
         final imageUrl = getImageUrl(picture.media);
-        // 使用 precacheImage 预加载
-        precacheImage(NetworkImage(imageUrl), context);
+        // 使用自定义缓存预加载
+        cacheManager.cacheImage(
+          widget.moduleId,
+          imageUrl,
+          headers: picture.media.headers,
+        ).catchError((e) {
+          // 忽略预加载错误
+          return null;
+        });
       }
     }
   }
@@ -994,40 +1004,33 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
   /// WebToon 模式图片项
   Widget _buildWebtoonImageItem(int index) {
     final picture = _pictures[index];
-    final imageUrl = getImageUrl(picture.media);
     final isVertical = _readerDirection == ReaderDirection.topToBottom;
     
-    return Image.network(
-      imageUrl,
+    return CachedImageWidget(
+      imageInfo: picture.media,
+      moduleId: widget.moduleId,
       fit: isVertical ? BoxFit.fitWidth : BoxFit.fitHeight,
       width: isVertical ? double.infinity : null,
       height: isVertical ? null : double.infinity,
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) return child;
-        return Container(
-          height: isVertical ? 300 : null,
-          width: isVertical ? null : 300,
-          alignment: Alignment.center,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(
-                value: loadingProgress.expectedTotalBytes != null
-                    ? loadingProgress.cumulativeBytesLoaded /
-                        loadingProgress.expectedTotalBytes!
-                    : null,
-                color: Colors.white,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                '${index + 1} / ${_pictures.length}',
-                style: const TextStyle(color: Colors.white),
-              ),
-            ],
-          ),
-        );
-      },
-      errorBuilder: (_, __, ___) => Container(
+      placeholder: Container(
+        height: isVertical ? 300 : null,
+        width: isVertical ? null : 300,
+        alignment: Alignment.center,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const CircularProgressIndicator(
+              color: Colors.white,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '${index + 1} / ${_pictures.length}',
+              style: const TextStyle(color: Colors.white),
+            ),
+          ],
+        ),
+      ),
+      errorWidget: Container(
         height: isVertical ? 300 : null,
         width: isVertical ? null : 300,
         alignment: Alignment.center,
@@ -1283,12 +1286,6 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
     }
     
     final picture = _pictures[index];
-    final imageUrl = getImageUrl(picture.media);
-    
-    // 预加载图片（异步，不阻塞UI）
-    Future.microtask(() {
-      precacheImage(NetworkImage(imageUrl), context);
-    });
     
     // 在 touchDoubleOnceNext 模式下，如果图片没有缩放，禁用平移以允许手势传递
     final matrix = _transformController.value;
@@ -1302,32 +1299,26 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
       maxScale: 4.0,
       panEnabled: panEnabled,
       child: Center(
-        child: Image.network(
-          imageUrl,
+        child: CachedImageWidget(
+          imageInfo: picture.media,
+          moduleId: widget.moduleId,
           fit: fit,
-          loadingBuilder: (context, child, loadingProgress) {
-            if (loadingProgress == null) return child;
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(
-                    value: loadingProgress.expectedTotalBytes != null
-                        ? loadingProgress.cumulativeBytesLoaded /
-                            loadingProgress.expectedTotalBytes!
-                        : null,
-                    color: Colors.white,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    '${index + 1} / ${_pictures.length}',
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                ],
-              ),
-            );
-          },
-          errorBuilder: (_, __, ___) => Center(
+          placeholder: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const CircularProgressIndicator(
+                  color: Colors.white,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  '${index + 1} / ${_pictures.length}',
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ],
+            ),
+          ),
+          errorWidget: Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [

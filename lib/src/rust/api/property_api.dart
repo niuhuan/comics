@@ -9,55 +9,42 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `fmt`
 
 /// 保存属性
-Future<void> saveProperty({
-  required String moduleId,
-  required String key,
-  required String value,
-}) => RustLib.instance.api.crateApiPropertyApiSaveProperty(
-  moduleId: moduleId,
-  key: key,
-  value: value,
-);
+Future<void> saveProperty(
+        {required String moduleId,
+        required String key,
+        required String value}) =>
+    RustLib.instance.api.crateApiPropertyApiSaveProperty(
+        moduleId: moduleId, key: key, value: value);
 
 /// 加载属性
 Future<String?> loadProperty({required String moduleId, required String key}) =>
-    RustLib.instance.api.crateApiPropertyApiLoadProperty(
-      moduleId: moduleId,
-      key: key,
-    );
+    RustLib.instance.api
+        .crateApiPropertyApiLoadProperty(moduleId: moduleId, key: key);
 
 /// 删除属性
 Future<void> deleteProperty({required String moduleId, required String key}) =>
-    RustLib.instance.api.crateApiPropertyApiDeleteProperty(
-      moduleId: moduleId,
-      key: key,
-    );
+    RustLib.instance.api
+        .crateApiPropertyApiDeleteProperty(moduleId: moduleId, key: key);
 
 /// 列出模块的所有属性
 Future<List<PropertyItem>> listProperties({required String moduleId}) =>
     RustLib.instance.api.crateApiPropertyApiListProperties(moduleId: moduleId);
 
 /// 按前缀列出属性
-Future<List<PropertyItem>> listPropertiesByPrefix({
-  required String moduleId,
-  required String prefix,
-}) => RustLib.instance.api.crateApiPropertyApiListPropertiesByPrefix(
-  moduleId: moduleId,
-  prefix: prefix,
-);
+Future<List<PropertyItem>> listPropertiesByPrefix(
+        {required String moduleId, required String prefix}) =>
+    RustLib.instance.api.crateApiPropertyApiListPropertiesByPrefix(
+        moduleId: moduleId, prefix: prefix);
 
 /// 清除模块的所有属性
-Future<BigInt> clearModuleProperties({required String moduleId}) => RustLib
-    .instance
-    .api
-    .crateApiPropertyApiClearModuleProperties(moduleId: moduleId);
+Future<BigInt> clearModuleProperties({required String moduleId}) =>
+    RustLib.instance.api
+        .crateApiPropertyApiClearModuleProperties(moduleId: moduleId);
 
 /// 保存应用设置
 Future<void> saveAppSetting({required String key, required String value}) =>
-    RustLib.instance.api.crateApiPropertyApiSaveAppSetting(
-      key: key,
-      value: value,
-    );
+    RustLib.instance.api
+        .crateApiPropertyApiSaveAppSetting(key: key, value: value);
 
 /// 加载应用设置
 Future<String?> loadAppSetting({required String key}) =>
@@ -76,7 +63,10 @@ class PropertyItem {
   final String key;
   final String value;
 
-  const PropertyItem({required this.key, required this.value});
+  const PropertyItem({
+    required this.key,
+    required this.value,
+  });
 
   @override
   int get hashCode => key.hashCode ^ value.hashCode;

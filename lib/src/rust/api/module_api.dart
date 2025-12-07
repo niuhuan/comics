@@ -30,13 +30,10 @@ Future<void> unloadModule({required String moduleId}) =>
     RustLib.instance.api.crateApiModuleApiUnloadModule(moduleId: moduleId);
 
 /// 启用/禁用模块
-Future<void> setModuleEnabled({
-  required String moduleId,
-  required bool enabled,
-}) => RustLib.instance.api.crateApiModuleApiSetModuleEnabled(
-  moduleId: moduleId,
-  enabled: enabled,
-);
+Future<void> setModuleEnabled(
+        {required String moduleId, required bool enabled}) =>
+    RustLib.instance.api.crateApiModuleApiSetModuleEnabled(
+        moduleId: moduleId, enabled: enabled);
 
 /// 获取模块的分类列表
 Future<List<Category>> getCategories({required String moduleId}) =>
@@ -47,100 +44,73 @@ Future<List<SortOption>> getSortOptions({required String moduleId}) =>
     RustLib.instance.api.crateApiModuleApiGetSortOptions(moduleId: moduleId);
 
 /// 获取漫画列表 (参考 pikapika comics)
-Future<ComicsPage> getComics({
-  required String moduleId,
-  required String categorySlug,
-  required String sortBy,
-  required int page,
-}) => RustLib.instance.api.crateApiModuleApiGetComics(
-  moduleId: moduleId,
-  categorySlug: categorySlug,
-  sortBy: sortBy,
-  page: page,
-);
+Future<ComicsPage> getComics(
+        {required String moduleId,
+        required String categorySlug,
+        required String sortBy,
+        required int page}) =>
+    RustLib.instance.api.crateApiModuleApiGetComics(
+        moduleId: moduleId,
+        categorySlug: categorySlug,
+        sortBy: sortBy,
+        page: page);
 
 /// 获取漫画详情 (参考 pikapika album/comicInfo)
-Future<ComicDetail> getComicDetail({
-  required String moduleId,
-  required String comicId,
-}) => RustLib.instance.api.crateApiModuleApiGetComicDetail(
-  moduleId: moduleId,
-  comicId: comicId,
-);
+Future<ComicDetail> getComicDetail(
+        {required String moduleId, required String comicId}) =>
+    RustLib.instance.api
+        .crateApiModuleApiGetComicDetail(moduleId: moduleId, comicId: comicId);
 
 /// 获取章节列表 (参考 pikapika eps)
-Future<EpPage> getEps({
-  required String moduleId,
-  required String comicId,
-  required int page,
-}) => RustLib.instance.api.crateApiModuleApiGetEps(
-  moduleId: moduleId,
-  comicId: comicId,
-  page: page,
-);
+Future<EpPage> getEps(
+        {required String moduleId,
+        required String comicId,
+        required int page}) =>
+    RustLib.instance.api.crateApiModuleApiGetEps(
+        moduleId: moduleId, comicId: comicId, page: page);
 
 /// 获取章节图片 (参考 pikapika pictures)
-Future<PicturePage> getPictures({
-  required String moduleId,
-  required String comicId,
-  required String epId,
-  required int page,
-}) => RustLib.instance.api.crateApiModuleApiGetPictures(
-  moduleId: moduleId,
-  comicId: comicId,
-  epId: epId,
-  page: page,
-);
+Future<PicturePage> getPictures(
+        {required String moduleId,
+        required String comicId,
+        required String epId,
+        required int page}) =>
+    RustLib.instance.api.crateApiModuleApiGetPictures(
+        moduleId: moduleId, comicId: comicId, epId: epId, page: page);
 
 /// 搜索漫画 (参考 pikapika search)
-Future<ComicsPage> searchComics({
-  required String moduleId,
-  required String keyword,
-  required String sortBy,
-  required int page,
-}) => RustLib.instance.api.crateApiModuleApiSearchComics(
-  moduleId: moduleId,
-  keyword: keyword,
-  sortBy: sortBy,
-  page: page,
-);
+Future<ComicsPage> searchComics(
+        {required String moduleId,
+        required String keyword,
+        required String sortBy,
+        required int page}) =>
+    RustLib.instance.api.crateApiModuleApiSearchComics(
+        moduleId: moduleId, keyword: keyword, sortBy: sortBy, page: page);
 
 /// 调用模块的任意函数（高级 API）
-Future<String> callModuleFunction({
-  required String moduleId,
-  required String funcName,
-  required String argsJson,
-}) => RustLib.instance.api.crateApiModuleApiCallModuleFunction(
-  moduleId: moduleId,
-  funcName: funcName,
-  argsJson: argsJson,
-);
+Future<String> callModuleFunction(
+        {required String moduleId,
+        required String funcName,
+        required String argsJson}) =>
+    RustLib.instance.api.crateApiModuleApiCallModuleFunction(
+        moduleId: moduleId, funcName: funcName, argsJson: argsJson);
 
 /// 获取模块存储的值
-Future<String?> getModuleStorage({
-  required String moduleId,
-  required String key,
-}) => RustLib.instance.api.crateApiModuleApiGetModuleStorage(
-  moduleId: moduleId,
-  key: key,
-);
+Future<String?> getModuleStorage(
+        {required String moduleId, required String key}) =>
+    RustLib.instance.api
+        .crateApiModuleApiGetModuleStorage(moduleId: moduleId, key: key);
 
 /// 设置模块存储的值
-Future<void> setModuleStorage({
-  required String moduleId,
-  required String key,
-  required String value,
-}) => RustLib.instance.api.crateApiModuleApiSetModuleStorage(
-  moduleId: moduleId,
-  key: key,
-  value: value,
-);
+Future<void> setModuleStorage(
+        {required String moduleId,
+        required String key,
+        required String value}) =>
+    RustLib.instance.api.crateApiModuleApiSetModuleStorage(
+        moduleId: moduleId, key: key, value: value);
 
 /// 删除模块存储的值
-Future<void> removeModuleStorage({
-  required String moduleId,
-  required String key,
-}) => RustLib.instance.api.crateApiModuleApiRemoveModuleStorage(
-  moduleId: moduleId,
-  key: key,
-);
+Future<void> removeModuleStorage(
+        {required String moduleId, required String key}) =>
+    RustLib.instance.api
+        .crateApiModuleApiRemoveModuleStorage(moduleId: moduleId, key: key);
