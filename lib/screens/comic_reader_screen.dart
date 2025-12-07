@@ -348,70 +348,124 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
 
     return GestureDetector(
       onTap: _toggleFullScreen,
-      child: PageView.builder(
-        controller: _pageController,
-        itemCount: _pictures.length,
-        onPageChanged: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        itemBuilder: (context, index) {
-          final picture = _pictures[index];
-          final imageUrl = getImageUrl(picture.media);
-          
-          return InteractiveViewer(
-            transformationController: _transformController,
-            minScale: 0.5,
-            maxScale: 4.0,
-            child: Center(
-              child: Image.network(
-                imageUrl,
-                fit: BoxFit.contain,
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircularProgressIndicator(
-                          value: loadingProgress.expectedTotalBytes != null
-                              ? loadingProgress.cumulativeBytesLoaded /
-                                  loadingProgress.expectedTotalBytes!
-                              : null,
-                          color: Colors.white,
+      child: Stack(
+        children: [
+          PageView.builder(
+            controller: _pageController,
+            itemCount: _pictures.length,
+            onPageChanged: (index) {
+              setState(() {
+                _currentIndex = index;
+              });
+              // 重置缩放
+              _transformController.value = Matrix4.identity();
+            },
+            itemBuilder: (context, index) {
+              final picture = _pictures[index];
+              final imageUrl = getImageUrl(picture.media);
+              
+              return InteractiveViewer(
+                transformationController: _transformController,
+                minScale: 0.5,
+                maxScale: 4.0,
+                child: Center(
+                  child: Image.network(
+                    imageUrl,
+                    fit: BoxFit.contain,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            CircularProgressIndicator(
+                              value: loadingProgress.expectedTotalBytes != null
+                                  ? loadingProgress.cumulativeBytesLoaded /
+                                      loadingProgress.expectedTotalBytes!
+                                  : null,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              '${index + 1} / ${_pictures.length}',
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 16),
-                        Text(
-                          '${index + 1} / ${_pictures.length}',
-                          style: const TextStyle(color: Colors.white),
-                        ),
-                      ],
+                      );
+                    },
+                    errorBuilder: (_, __, ___) => Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.broken_image,
+                            size: 60,
+                            color: Colors.grey,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '图片加载失败\n${index + 1} / ${_pictures.length}',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(color: Colors.grey),
+                          ),
+                        ],
+                      ),
                     ),
-                  );
-                },
-                errorBuilder: (_, __, ___) => Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.broken_image,
-                        size: 60,
-                        color: Colors.grey,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        '图片加载失败\n${index + 1} / ${_pictures.length}',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.grey),
-                      ),
-                    ],
                   ),
                 ),
-              ),
+              );
+            },
+          ),
+          // 左右区域点击翻页
+          Positioned.fill(
+            child: Row(
+              children: [
+                // 左侧区域 - 上一页
+                Expanded(
+                  flex: 1,
+                  child: GestureDetector(
+                    onTap: () {
+                      if (_currentIndex > 0) {
+                        _pageController.previousPage(
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                        );
+                      }
+                    },
+                    behavior: HitTestBehavior.translucent,
+                    child: Container(color: Colors.transparent),
+                  ),
+                ),
+                // 中间区域 - 切换全屏
+                Expanded(
+                  flex: 2,
+                  child: GestureDetector(
+                    onTap: _toggleFullScreen,
+                    behavior: HitTestBehavior.translucent,
+                    child: Container(color: Colors.transparent),
+                  ),
+                ),
+                // 右侧区域 - 下一页
+                Expanded(
+                  flex: 1,
+                  child: GestureDetector(
+                    onTap: () {
+                      if (_currentIndex < _pictures.length - 1) {
+                        _pageController.nextPage(
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                        );
+                      }
+                    },
+                    behavior: HitTestBehavior.translucent,
+                    child: Container(color: Colors.transparent),
+                  ),
+                ),
+              ],
             ),
-          );
-        },
+          ),
+        ],
       ),
     );
   }
