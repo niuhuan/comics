@@ -33,11 +33,13 @@ class ImageCacheManager {
 
   /// 下载并缓存图片
   /// 返回本地文件路径
+  /// [processParams] 可选的图片处理参数（JSON 格式），例如 {"chapterId": "123", "imageName": "001.jpg"}
   Future<String?> cacheImage(
     String moduleId,
     String url, {
     Map<String, String>? headers,
     int expireDays = 30,
+    Map<String, dynamic>? processParams,
   }) async {
     try {
       // 先检查缓存
@@ -55,6 +57,32 @@ class ImageCacheManager {
       if (response.statusCode != 200) {
         debugPrint('Failed to download image: ${response.statusCode}');
         return null;
+      }
+
+      // 获取图片数据
+      var imageBytes = response.bodyBytes;
+
+      // 如果提供了处理参数，尝试调用模块的图片处理函数
+      if (processParams != null && processParams.isNotEmpty) {
+        try {
+          final imageDataBase64 = base64Encode(imageBytes);
+          final paramsJson = jsonEncode(processParams);
+          
+          final processedDataBase64 = await api.processImageWithModule(
+            moduleId: moduleId,
+            imageDataBase64: imageDataBase64,
+            paramsJson: paramsJson,
+          );
+          
+          // 如果返回的数据与原始数据不同，说明处理成功
+          if (processedDataBase64 != imageDataBase64) {
+            imageBytes = base64Decode(processedDataBase64);
+            debugPrint('Image processed by module: $moduleId');
+          }
+        } catch (e) {
+          // 处理失败，使用原始数据
+          debugPrint('Failed to process image with module: $e');
+        }
       }
 
       // 获取缓存目录（使用 Rust 的缓存目录）
@@ -76,7 +104,7 @@ class ImageCacheManager {
 
       // 保存文件
       final file = File(filePath);
-      await file.writeAsBytes(response.bodyBytes);
+      await file.writeAsBytes(imageBytes);
 
       // 保存缓存信息到数据库
       final contentType = response.headers['content-type'] ?? 'image/jpeg';

@@ -1,10 +1,9 @@
 use flutter_rust_bridge::frb;
-use sea_orm::{EntityTrait, QueryFilter, ColumnTrait, ActiveModelTrait, Set, DeleteResult};
-use chrono::{Utc, NaiveDateTime, Duration};
-use std::path::PathBuf;
+use sea_orm::{EntityTrait, QueryFilter, ColumnTrait, ActiveModelTrait, Set};
+use chrono::{Utc, Duration};
 use tokio::fs;
 use crate::database::{self, entities::image_cache};
-use crate::get_cache_dir;
+use crate::api::module_api;
 
 /// 获取缓存的图片文件路径
 #[frb]
@@ -114,12 +113,9 @@ pub async fn clear_image_cache_by_module(module_id: String) -> anyhow::Result<u6
         .all(&*conn)
         .await?;
     
-    let mut deleted_count = 0u64;
-    
     // 删除文件
     for cache in &caches {
         let _ = fs::remove_file(&cache.file_path).await;
-        deleted_count += 1;
     }
     
     // 删除数据库记录
@@ -144,12 +140,9 @@ pub async fn clear_all_image_cache() -> anyhow::Result<u64> {
         .all(&*conn)
         .await?;
     
-    let mut deleted_count = 0u64;
-    
     // 删除文件
     for cache in &caches {
         let _ = fs::remove_file(&cache.file_path).await;
-        deleted_count += 1;
     }
     
     // 删除数据库记录
@@ -175,12 +168,9 @@ pub async fn clear_expired_image_cache() -> anyhow::Result<u64> {
         .all(&*conn)
         .await?;
     
-    let mut deleted_count = 0u64;
-    
     // 删除文件
     for cache in &caches {
         let _ = fs::remove_file(&cache.file_path).await;
-        deleted_count += 1;
     }
     
     // 删除数据库记录
@@ -234,5 +224,46 @@ pub struct ImageCacheStats {
     pub valid_count: u64,
     pub expired_count: u64,
     pub total_size: u64, // 字节
+}
+
+/// 使用模块处理图片
+/// 如果模块有 processImage 函数，则调用它处理图片
+/// 参数：
+/// - module_id: 模块 ID
+/// - image_data_base64: 图片数据的 base64 编码
+/// - params_json: 额外的参数（JSON 格式），例如 {"chapterId": "123", "imageName": "001.jpg"}
+/// 返回：处理后的图片数据（base64 编码），如果模块没有 processImage 函数或处理失败，返回原始数据
+#[frb]
+pub async fn process_image_with_module(
+    module_id: String,
+    image_data_base64: String,
+    params_json: String,
+) -> anyhow::Result<String> {
+    // 尝试调用模块的 processImage 函数
+    let args = serde_json::json!({
+        "imageData": image_data_base64,
+        "params": serde_json::from_str::<serde_json::Value>(&params_json).unwrap_or(serde_json::json!({}))
+    });
+    
+    match module_api::call_module_function(
+        module_id.clone(),
+        "processImage".to_string(),
+        serde_json::to_string(&args)?,
+    ).await {
+        Ok(result) => {
+            // 解析返回结果
+            let result_json: serde_json::Value = serde_json::from_str(&result)?;
+            if let Some(processed_data) = result_json.get("imageData").and_then(|v| v.as_str()) {
+                Ok(processed_data.to_string())
+            } else {
+                // 如果返回格式不对，返回原始数据
+                Ok(image_data_base64)
+            }
+        }
+        Err(_) => {
+            // 模块没有 processImage 函数或调用失败，返回原始数据
+            Ok(image_data_base64)
+        }
+    }
 }
 

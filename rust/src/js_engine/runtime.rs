@@ -159,6 +159,7 @@ impl JsRuntime {
             let parse: Function = json.get("parse")?;
             let args: Value = parse.call((args_json,))?;
             
+            tracing::info!("[JS Runtime] Calling function {} with args: {}", func_name, args_json);
             tracing::debug!("Parsed args, calling function...");
             
             // 调用函数
@@ -177,7 +178,21 @@ impl JsRuntime {
                 match promise.finish::<Value>() {
                     Ok(resolved_value) => {
                         tracing::debug!("Promise resolved, value type: {:?}", resolved_value.type_of());
-                        resolved_value
+                        // 尝试先序列化为 JSON 字符串，检查是否有类型错误
+                        let json: Object = globals.get("JSON")?;
+                        let stringify: Function = json.get("stringify")?;
+                        match stringify.call::<(Value,), String>((resolved_value.clone(),)) {
+                            Ok(json_str) => {
+                                tracing::debug!("Promise result serialized successfully, {} bytes", json_str.len());
+                                // 如果序列化成功，说明类型没问题，直接返回序列化后的字符串
+                                return Ok(json_str);
+                            }
+                            Err(e) => {
+                                tracing::error!("Failed to serialize promise result: {:?}", e);
+                                // 序列化失败，继续使用原始值（可能会在后续步骤失败）
+                                resolved_value
+                            }
+                        }
                     }
                     Err(rquickjs::Error::WouldBlock) => {
                         // Promise 需要等待外部操作，无法立即完成
@@ -189,7 +204,16 @@ impl JsRuntime {
                         tracing::error!("Promise rejected with exception");
                         // 尝试获取异常信息
                         let exc = ctx.catch();
-                        let error_msg = format!("{:?}", exc);
+                        let error_msg = if let Some(err_obj) = exc.as_object() {
+                            let message: String = err_obj.get("message").unwrap_or_default();
+                            let stack: String = err_obj.get("stack").unwrap_or_default();
+                            format!("JS Error: {}\nStack: {}", message, stack)
+                        } else if let Some(err_str) = exc.as_string() {
+                            format!("JS Error: {}", err_str.to_string().unwrap_or_default())
+                        } else {
+                            format!("JS Error: {:?}", exc)
+                        };
+                        tracing::error!("Promise exception details: {}", error_msg);
                         return Err(anyhow::anyhow!("JS Promise Error: {}", error_msg));
                     }
                     Err(e) => {

@@ -37,7 +37,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1158685055;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 96377621;
 
 // Section: executor
 
@@ -857,6 +857,42 @@ fn wire__crate__api__image_cache_api__get_image_cache_stats_impl(
         },
     )
 }
+fn wire__crate__api__image_api__get_image_info_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "get_image_info",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_image_data_base64 = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || {
+                        let output_ok =
+                            crate::api::image_api::get_image_info(api_image_data_base64)?;
+                        Ok(output_ok)
+                    })(),
+                )
+            }
+        },
+    )
+}
 fn wire__crate__api__module_api__get_module_storage_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -1618,6 +1654,88 @@ fn wire__crate__api__property_api__load_property_impl(
                         Ok(output_ok)
                     })()
                     .await,
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__image_cache_api__process_image_with_module_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "process_image_with_module",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_module_id = <String>::sse_decode(&mut deserializer);
+            let api_image_data_base64 = <String>::sse_decode(&mut deserializer);
+            let api_params_json = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || async move {
+                        let output_ok = crate::api::image_cache_api::process_image_with_module(
+                            api_module_id,
+                            api_image_data_base64,
+                            api_params_json,
+                        )
+                        .await?;
+                        Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__image_api__rearrange_image_rows_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "rearrange_image_rows",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_image_data_base64 = <String>::sse_decode(&mut deserializer);
+            let api_rows = <u32>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || {
+                        let output_ok = crate::api::image_api::rearrange_image_rows(
+                            api_image_data_base64,
+                            api_rows,
+                        )?;
+                        Ok(output_ok)
+                    })(),
                 )
             }
         },
@@ -2524,6 +2642,13 @@ impl SseDecode for u16 {
     }
 }
 
+impl SseDecode for u32 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        deserializer.cursor.read_u32::<NativeEndian>().unwrap()
+    }
+}
+
 impl SseDecode for u64 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -2609,72 +2734,85 @@ fn pde_ffi_dispatcher_primary_impl(
             rust_vec_len,
             data_len,
         ),
-        24 => {
+        24 => wire__crate__api__image_api__get_image_info_impl(port, ptr, rust_vec_len, data_len),
+        25 => {
             wire__crate__api__module_api__get_module_storage_impl(port, ptr, rust_vec_len, data_len)
         }
-        25 => wire__crate__api__module_api__get_modules_impl(port, ptr, rust_vec_len, data_len),
-        27 => wire__crate__api__module_api__get_pictures_impl(port, ptr, rust_vec_len, data_len),
-        29 => {
+        26 => wire__crate__api__module_api__get_modules_impl(port, ptr, rust_vec_len, data_len),
+        28 => wire__crate__api__module_api__get_pictures_impl(port, ptr, rust_vec_len, data_len),
+        30 => {
             wire__crate__api__module_api__get_sort_options_impl(port, ptr, rust_vec_len, data_len)
         }
-        31 => wire__crate__api__http_api__http_download_impl(port, ptr, rust_vec_len, data_len),
-        32 => wire__crate__api__http_api__http_get_impl(port, ptr, rust_vec_len, data_len),
-        33 => wire__crate__api__http_api__http_post_impl(port, ptr, rust_vec_len, data_len),
-        34 => wire__crate__api__http_api__http_request_impl(port, ptr, rust_vec_len, data_len),
-        35 => wire__crate__api__simple__init_app_impl(port, ptr, rust_vec_len, data_len),
-        36 => wire__crate__api__init__init_application_impl(port, ptr, rust_vec_len, data_len),
-        37 => wire__crate__api__init__init_frb_impl(port, ptr, rust_vec_len, data_len),
-        39 => wire__crate__api__property_api__list_app_settings_impl(
+        32 => wire__crate__api__http_api__http_download_impl(port, ptr, rust_vec_len, data_len),
+        33 => wire__crate__api__http_api__http_get_impl(port, ptr, rust_vec_len, data_len),
+        34 => wire__crate__api__http_api__http_post_impl(port, ptr, rust_vec_len, data_len),
+        35 => wire__crate__api__http_api__http_request_impl(port, ptr, rust_vec_len, data_len),
+        36 => wire__crate__api__simple__init_app_impl(port, ptr, rust_vec_len, data_len),
+        37 => wire__crate__api__init__init_application_impl(port, ptr, rust_vec_len, data_len),
+        38 => wire__crate__api__init__init_frb_impl(port, ptr, rust_vec_len, data_len),
+        40 => wire__crate__api__property_api__list_app_settings_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        40 => {
+        41 => {
             wire__crate__api__property_api__list_properties_impl(port, ptr, rust_vec_len, data_len)
         }
-        41 => wire__crate__api__property_api__list_properties_by_prefix_impl(
+        42 => wire__crate__api__property_api__list_properties_by_prefix_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        42 => {
+        43 => {
             wire__crate__api__property_api__load_app_setting_impl(port, ptr, rust_vec_len, data_len)
         }
-        43 => wire__crate__api__module_api__load_module_impl(port, ptr, rust_vec_len, data_len),
-        44 => wire__crate__api__property_api__load_property_impl(port, ptr, rust_vec_len, data_len),
-        45 => wire__crate__api__module_api__register_module_impl(port, ptr, rust_vec_len, data_len),
-        46 => wire__crate__api__module_api__remove_module_storage_impl(
+        44 => wire__crate__api__module_api__load_module_impl(port, ptr, rust_vec_len, data_len),
+        45 => wire__crate__api__property_api__load_property_impl(port, ptr, rust_vec_len, data_len),
+        46 => wire__crate__api__image_cache_api__process_image_with_module_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        47 => {
+        47 => wire__crate__api__image_api__rearrange_image_rows_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        48 => wire__crate__api__module_api__register_module_impl(port, ptr, rust_vec_len, data_len),
+        49 => wire__crate__api__module_api__remove_module_storage_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        50 => {
             wire__crate__api__property_api__save_app_setting_impl(port, ptr, rust_vec_len, data_len)
         }
-        48 => wire__crate__api__image_cache_api__save_image_to_cache_impl(
+        51 => wire__crate__api__image_cache_api__save_image_to_cache_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        49 => wire__crate__api__property_api__save_property_impl(port, ptr, rust_vec_len, data_len),
-        50 => wire__crate__api__module_api__scan_and_register_modules_impl(
+        52 => wire__crate__api__property_api__save_property_impl(port, ptr, rust_vec_len, data_len),
+        53 => wire__crate__api__module_api__scan_and_register_modules_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        51 => wire__crate__api__module_api__search_comics_impl(port, ptr, rust_vec_len, data_len),
-        52 => {
+        54 => wire__crate__api__module_api__search_comics_impl(port, ptr, rust_vec_len, data_len),
+        55 => {
             wire__crate__api__module_api__set_module_enabled_impl(port, ptr, rust_vec_len, data_len)
         }
-        53 => {
+        56 => {
             wire__crate__api__module_api__set_module_storage_impl(port, ptr, rust_vec_len, data_len)
         }
-        54 => wire__crate__api__module_api__unload_module_impl(port, ptr, rust_vec_len, data_len),
+        57 => wire__crate__api__module_api__unload_module_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -2697,10 +2835,10 @@ fn pde_ffi_dispatcher_sync_impl(
         13 => wire__crate__api__crypto_api__crypto_sha256_bytes_impl(ptr, rust_vec_len, data_len),
         14 => wire__crate__api__crypto_api__crypto_sha512_impl(ptr, rust_vec_len, data_len),
         17 => wire__crate__api__init__get_cache_dir_impl(ptr, rust_vec_len, data_len),
-        26 => wire__crate__api__init__get_modules_dir_impl(ptr, rust_vec_len, data_len),
-        28 => wire__crate__api__init__get_root_path_impl(ptr, rust_vec_len, data_len),
-        30 => wire__crate__api__simple__greet_impl(ptr, rust_vec_len, data_len),
-        38 => wire__crate__api__init__is_initialized_impl(ptr, rust_vec_len, data_len),
+        27 => wire__crate__api__init__get_modules_dir_impl(ptr, rust_vec_len, data_len),
+        29 => wire__crate__api__init__get_root_path_impl(ptr, rust_vec_len, data_len),
+        31 => wire__crate__api__simple__greet_impl(ptr, rust_vec_len, data_len),
+        39 => wire__crate__api__init__is_initialized_impl(ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -3407,6 +3545,13 @@ impl SseEncode for u16 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         serializer.cursor.write_u16::<NativeEndian>(self).unwrap();
+    }
+}
+
+impl SseEncode for u32 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        serializer.cursor.write_u32::<NativeEndian>(self).unwrap();
     }
 }
 

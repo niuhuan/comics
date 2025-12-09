@@ -250,7 +250,34 @@ impl ModuleManager {
             "page": page
         });
         let result = self.call_function(module_id, "getComics", &args.to_string()).await?;
-        let response: ComicsPage = serde_json::from_str(&result)?;
+        tracing::debug!("getComics raw result (first 1000 chars): {}", &result[..std::cmp::min(1000, result.len())]);
+        
+        // 尝试解析，如果失败则输出更详细的错误信息
+        let response: ComicsPage = match serde_json::from_str::<ComicsPage>(&result) {
+            Ok(r) => {
+                tracing::debug!("Successfully parsed ComicsPage with {} docs", r.docs.len());
+                r
+            },
+            Err(e) => {
+                tracing::error!("Failed to parse ComicsPage: {}", e);
+                tracing::error!("Full JSON string (first 2000 chars): {}", &result[..std::cmp::min(2000, result.len())]);
+                
+                // 尝试手动检查 JSON 结构
+                if let Ok(json_value) = serde_json::from_str::<serde_json::Value>(&result) {
+                    tracing::error!("Parsed as Value, structure: {:?}", json_value);
+                    if let Some(docs) = json_value.get("docs") {
+                        if let Some(first_doc) = docs.as_array().and_then(|a| a.first()) {
+                            tracing::error!("First doc structure: {:?}", first_doc);
+                            if let Some(id_field) = first_doc.get("id") {
+                                tracing::error!("First doc id type: {:?}, value: {:?}", id_field, id_field);
+                            }
+                        }
+                    }
+                }
+                
+                return Err(anyhow::anyhow!("Failed to parse ComicsPage: {}", e));
+            }
+        };
         Ok(response)
     }
 

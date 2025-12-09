@@ -5,3 +5,4 @@ pub mod property_api;
 pub mod http_api;
 pub mod crypto_api;
 pub mod image_cache_api;
+pub mod image_api;
