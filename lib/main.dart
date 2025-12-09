@@ -1,11 +1,16 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:comics/src/rust/api/init.dart';
 import 'package:comics/src/rust/api/module_api.dart';
+import 'package:comics/src/rust/api/property_api.dart';
 import 'package:comics/src/rust/modules/types.dart';
 import 'package:comics/src/rust/frb_generated.dart';
+import 'package:comics/src/cached_image_widget.dart';
 import 'package:comics/screens/comic_info_screen.dart';
+import 'package:comics/src/history_manager.dart';
 import 'package:comics/src/image_cache_manager.dart';
 import 'package:comics/src/rust/api/image_cache_api.dart' as api;
 
@@ -162,31 +167,632 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
+enum _HomeSection { browse, history, plugins, settings }
+
 class _HomeScreenState extends State<HomeScreen> {
   List<ModuleInfo> _modules = [];
-  bool _loading = true;
-  String? _error;
+  ModuleInfo? _selectedModule;
+  bool _loadingModules = true;
+  bool _scanningModules = false;
+  String? _modulesError;
+
+  bool _loadingHistory = false;
+  List<HistoryEntry> _history = [];
+
+  _HomeSection _currentSection = _HomeSection.browse;
 
   @override
   void initState() {
     super.initState();
     _loadModules();
+    _loadHistory();
   }
 
-  Future<void> _loadModules() async {
+  ModuleInfo? _findModuleById(List<ModuleInfo> modules, String? id) {
+    if (id == null) return null;
+    try {
+      return modules.firstWhere((m) => m.id == id);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  ModuleInfo? _pickSelectedModule(List<ModuleInfo> modules, String? lastId) {
+    final saved = _findModuleById(modules, lastId);
+    final current = _findModuleById(modules, _selectedModule?.id);
+    return saved ?? current ?? (modules.isNotEmpty ? modules.first : null);
+  }
+
+  Future<void> _loadModules({bool rescan = false}) async {
+    if (!rescan) {
+      setState(() {
+        _loadingModules = true;
+        _modulesError = null;
+      });
+    } else {
+      setState(() {
+        _scanningModules = true;
+        _modulesError = null;
+      });
+    }
+
+    try {
+      final modules =
+          rescan ? await scanAndRegisterModules() : await getModules();
+      final lastId = await loadAppSetting(key: 'last_module_id');
+      final selected = _pickSelectedModule(modules, lastId);
+
+      if (mounted) {
+        setState(() {
+          _modules = modules;
+          _selectedModule = selected;
+          _loadingModules = false;
+          _scanningModules = false;
+        });
+      }
+
+      if (selected != null) {
+        saveAppSetting(key: 'last_module_id', value: selected.id)
+            .catchError((e) => debugPrint('Failed to save last module: $e'));
+      }
+
+      for (final module in modules) {
+        if (!module.enabled) {
+          setModuleEnabled(moduleId: module.id, enabled: true).catchError(
+              (e) => debugPrint('Failed to enable module ${module.id}: $e'));
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _modulesError = e.toString();
+          _loadingModules = false;
+          _scanningModules = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _selectModule(ModuleInfo module) async {
+    setState(() {
+      _selectedModule = module;
+    });
+    setModuleEnabled(moduleId: module.id, enabled: true)
+        .catchError((e) => debugPrint('Failed to enable module: $e'));
+    saveAppSetting(key: 'last_module_id', value: module.id)
+        .catchError((e) => debugPrint('Failed to save last module: $e'));
+  }
+
+  Future<void> _loadHistory() async {
+    setState(() => _loadingHistory = true);
+    final data = await HistoryManager.instance.loadHistory();
+    if (!mounted) return;
+    setState(() {
+      _history = data;
+      _loadingHistory = false;
+    });
+  }
+
+  Future<void> _openHistoryEntry(HistoryEntry entry) async {
+    final module = _findModuleById(_modules, entry.moduleId);
+    if (module == null) {
+      _showSnack('未找到对应的源，无法打开');
+      return;
+    }
+
+    await _selectModule(module);
+    setState(() => _currentSection = _HomeSection.browse);
+    await loadModule(moduleId: module.id);
+
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ComicInfoScreen(
+          moduleId: module.id,
+          moduleName: module.name,
+          comicId: entry.comicId,
+          comicTitle: entry.comicTitle,
+        ),
+      ),
+    );
+    await _loadHistory();
+  }
+
+  void _showSnack(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  Widget _buildDrawer() {
+    return Drawer(
+      child: SafeArea(
+        child: Column(
+          children: [
+            const ListTile(
+              title: Text('选择源'),
+              leading: Icon(Icons.menu_book),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: _loadingModules
+                  ? const Center(child: CircularProgressIndicator())
+                  : ListView.builder(
+                      itemCount: _modules.length,
+                      itemBuilder: (context, index) {
+                        final module = _modules[index];
+                        final selected = _selectedModule?.id == module.id;
+                        return ListTile(
+                          leading: Icon(
+                            Icons.extension,
+                            color:
+                                selected ? Theme.of(context).primaryColor : null,
+                          ),
+                          title: Text(module.name),
+                          subtitle: Text(module.id),
+                          selected: selected,
+                          onTap: () {
+                            Navigator.of(context).pop();
+                            _selectModule(module);
+                            setState(() => _currentSection = _HomeSection.browse);
+                          },
+                        );
+                      },
+                    ),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.history),
+              title: const Text('历史记录'),
+              selected: _currentSection == _HomeSection.history,
+              onTap: () {
+                Navigator.of(context).pop();
+                setState(() => _currentSection = _HomeSection.history);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.extension),
+              title: const Text('插件管理'),
+              selected: _currentSection == _HomeSection.plugins,
+              onTap: () {
+                Navigator.of(context).pop();
+                setState(() => _currentSection = _HomeSection.plugins);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.settings),
+              title: const Text('设置'),
+              selected: _currentSection == _HomeSection.settings,
+              onTap: () {
+                Navigator.of(context).pop();
+                setState(() => _currentSection = _HomeSection.settings);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBrowseTab() {
+    if (_loadingModules) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_modulesError != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('加载模块失败: $_modulesError'),
+            const SizedBox(height: 12),
+            ElevatedButton(
+              onPressed: () => _loadModules(rescan: false),
+              child: const Text('重试'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_selectedModule == null) {
+      return _buildEmptyModules();
+    }
+
+    return HomeModuleView(
+      key: ValueKey(_selectedModule!.id),
+      module: _selectedModule!,
+      onOpenSettings: () => _openModuleSettings(_selectedModule!),
+      onHistoryChanged: _loadHistory,
+    );
+  }
+
+  Widget _buildHistoryTab() {
+    if (_loadingHistory) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_history.isEmpty) {
+      return const Center(child: Text('暂无历史记录'));
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadHistory,
+      child: ListView.separated(
+        padding: const EdgeInsets.all(8),
+        itemCount: _history.length,
+        separatorBuilder: (_, __) => const Divider(height: 1),
+        itemBuilder: (context, index) {
+          final item = _history[index];
+          return ListTile(
+            leading: _buildHistoryThumb(item),
+            title: Text(item.comicTitle),
+            subtitle:
+                Text('${item.moduleName} · ${_formatVisitedAt(item.visitedAt)}'),
+            onTap: () => _openHistoryEntry(item),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildHistoryThumb(HistoryEntry item) {
+    if (item.thumb == null) {
+      return const CircleAvatar(child: Icon(Icons.book));
+    }
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: SizedBox(
+        width: 56,
+        height: 56,
+        child: CachedImageWidget(
+          imageInfo: item.thumb!,
+          moduleId: item.moduleId,
+          fit: BoxFit.cover,
+        ),
+      ),
+    );
+  }
+
+  String _formatVisitedAt(DateTime time) {
+    final local = time.toLocal();
+    String two(int v) => v.toString().padLeft(2, '0');
+    return '${local.year}-${two(local.month)}-${two(local.day)} ${two(local.hour)}:${two(local.minute)}';
+  }
+
+  Widget _buildPluginTab() {
+    if (_loadingModules) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              ElevatedButton.icon(
+                onPressed: _importModuleFromFile,
+                icon: const Icon(Icons.file_open),
+                label: const Text('导入 JS 模块'),
+              ),
+              const SizedBox(width: 12),
+              OutlinedButton.icon(
+                onPressed: () => _loadModules(rescan: true),
+                icon: _scanningModules
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.refresh),
+                label: const Text('重新扫描'),
+              ),
+            ],
+          ),
+        ),
+        const Divider(height: 1),
+        Expanded(
+          child: _modules.isEmpty
+              ? _buildEmptyModules()
+              : ListView.builder(
+                  padding: const EdgeInsets.all(8),
+                  itemCount: _modules.length,
+                  itemBuilder: (context, index) {
+                    final module = _modules[index];
+                    return Card(
+                      child: ListTile(
+                        title: Text(module.name),
+                        subtitle: Text('${module.id} · v${module.version}'),
+                        trailing: PopupMenuButton<String>(
+                          onSelected: (value) {
+                            if (value == 'settings') {
+                              _openModuleSettings(module);
+                            } else if (value == 'delete') {
+                              _deleteModule(module);
+                            } else if (value == 'use') {
+                              _selectModule(module);
+                            }
+                          },
+                          itemBuilder: (context) => const [
+                            PopupMenuItem(
+                              value: 'use',
+                              child: Text('设为当前源'),
+                            ),
+                            PopupMenuItem(
+                              value: 'settings',
+                              child: Text('设置参数'),
+                            ),
+                            PopupMenuItem(
+                              value: 'delete',
+                              child: Text('删除源'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmptyModules() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.folder_open, size: 80, color: Colors.grey),
+          const SizedBox(height: 12),
+          const Text('暂无模块'),
+          const SizedBox(height: 12),
+          ElevatedButton(
+            onPressed: () => _loadModules(rescan: true),
+            child: const Text('扫描模块'),
+          ),
+          TextButton(
+            onPressed: _importModuleFromFile,
+            child: const Text('导入 JS 文件'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openModuleSettings(ModuleInfo module) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ModuleSettingsScreen(module: module),
+      ),
+    );
+  }
+
+  Future<void> _importModuleFromFile() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['js'],
+      );
+      if (result == null || result.files.single.path == null) return;
+
+      final sourceFile = File(result.files.single.path!);
+      if (!await sourceFile.exists()) {
+        _showSnack('文件不存在');
+        return;
+      }
+
+      final content = await sourceFile.readAsString();
+      final moduleId = _extractModuleId(content);
+      if (moduleId == null || moduleId.isEmpty) {
+        _showSnack('无法识别模块 ID');
+        return;
+      }
+
+      final modulesDir = getModulesDir();
+      if (modulesDir == null) {
+        _showSnack('模块目录未初始化');
+        return;
+      }
+
+      final targetDir = Directory(p.join(modulesDir, moduleId));
+      if (await targetDir.exists()) {
+        await targetDir.delete(recursive: true);
+      }
+      await targetDir.create(recursive: true);
+      final targetFile = File(p.join(targetDir.path, '$moduleId.js'));
+      await sourceFile.copy(targetFile.path);
+
+      await scanAndRegisterModules();
+      await _loadModules(rescan: false);
+      setState(() => _currentSection = _HomeSection.browse);
+      _showSnack('已导入 $moduleId');
+    } catch (e) {
+      _showSnack('导入失败: $e');
+    }
+  }
+
+  String? _extractModuleId(String content) {
+    final match = RegExp(
+      r"""moduleInfo\s*=\s*{[^}]*id\s*:\s*['\"]([^'\"]+)""",
+      dotAll: true,
+    ).firstMatch(content);
+    return match?.group(1);
+  }
+
+  Future<void> _deleteModule(ModuleInfo module) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('删除 ${module.name}?'),
+        content: const Text('删除后将移除模块文件及相关配置，确认继续？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    final modulesDir = getModulesDir();
+    if (modulesDir == null) {
+      _showSnack('模块目录未初始化');
+      return;
+    }
+
+    try {
+      final targetDir = Directory(p.join(modulesDir, module.id));
+      if (await targetDir.exists()) {
+        await targetDir.delete(recursive: true);
+      }
+
+      await clearModuleProperties(moduleId: module.id);
+      await ImageCacheManager().clearCacheByModule(module.id);
+      await HistoryManager.instance.removeByModule(module.id);
+
+      await scanAndRegisterModules();
+      await _loadModules(rescan: false);
+      await _loadHistory();
+
+      if (_selectedModule?.id == module.id) {
+        setState(() {
+          _selectedModule = _modules.isNotEmpty ? _modules.first : null;
+        });
+      }
+
+      _showSnack('已删除 ${module.name}');
+    } catch (e) {
+      _showSnack('删除失败: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    Widget body;
+    switch (_currentSection) {
+      case _HomeSection.browse:
+        body = _buildBrowseTab();
+        break;
+      case _HomeSection.history:
+        body = _buildHistoryTab();
+        break;
+      case _HomeSection.plugins:
+        body = _buildPluginTab();
+        break;
+      case _HomeSection.settings:
+        body = const SettingsScreen();
+        break;
+    }
+
+    final isBrowse = _currentSection == _HomeSection.browse;
+    final title = isBrowse
+        ? (_selectedModule?.name ?? 'Comics Browser')
+        : _currentSection == _HomeSection.history
+            ? '历史记录'
+            : _currentSection == _HomeSection.plugins
+                ? '插件管理'
+                : '设置';
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(title),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () {
+              if (isBrowse && _selectedModule != null) {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => ModuleSettingsScreen(module: _selectedModule!),
+                  ),
+                );
+              } else {
+                setState(() => _currentSection = _HomeSection.settings);
+              }
+            },
+          ),
+        ],
+      ),
+      drawer: _buildDrawer(),
+      body: body,
+    );
+  }
+}
+
+/// 嵌入式模块浏览视图（带分类选择）
+class HomeModuleView extends StatefulWidget {
+  final ModuleInfo module;
+  final VoidCallback? onOpenSettings;
+  final VoidCallback? onHistoryChanged;
+
+  const HomeModuleView({
+    super.key,
+    required this.module,
+    this.onOpenSettings,
+    this.onHistoryChanged,
+  });
+
+  @override
+  State<HomeModuleView> createState() => _HomeModuleViewState();
+}
+
+class _HomeModuleViewState extends State<HomeModuleView> {
+  List<Category> _categories = [];
+  Category? _selectedCategory;
+  bool _loading = true;
+  String? _error;
+  List<SortOption> _sortOptions = [];
+  String _currentSort = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCategories();
+  }
+
+  @override
+  void didUpdateWidget(covariant HomeModuleView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.module.id != widget.module.id) {
+      _categories = [];
+      _selectedCategory = null;
+      _error = null;
+      _loading = true;
+      _sortOptions = [];
+      _currentSort = '';
+      _loadCategories();
+    }
+  }
+
+  Future<void> _loadCategories() async {
     try {
       setState(() {
         _loading = true;
         _error = null;
       });
-      
-      final modules = await getModules();
-      
+
+      await loadModule(moduleId: widget.module.id);
+      final categories = await getCategories(moduleId: widget.module.id);
+      final sorts = await getSortOptions(moduleId: widget.module.id);
+
+      if (!mounted) return;
       setState(() {
-        _modules = modules;
+        _categories = categories;
+        if (categories.isNotEmpty) {
+          _selectedCategory = categories.first;
+        }
+        _sortOptions = sorts;
+        _currentSort = sorts.isNotEmpty ? sorts.first.value : '';
         _loading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = e.toString();
         _loading = false;
@@ -194,31 +800,95 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _showCategoryPicker() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.6,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  const Text('选择分类', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: ListView.builder(
+                itemCount: _categories.length,
+                itemBuilder: (context, index) {
+                  final cat = _categories[index];
+                  final isSelected = _selectedCategory?.id == cat.id;
+                  return ListTile(
+                    leading: isSelected
+                        ? const Icon(Icons.check, color: Colors.deepPurple)
+                        : const SizedBox(width: 24),
+                    title: Text(cat.title),
+                    selected: isSelected,
+                    onTap: () {
+                      setState(() => _selectedCategory = cat);
+                      Navigator.pop(context);
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Comics Browser'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadModules,
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            children: [
+              if (_categories.isNotEmpty)
+                TextButton.icon(
+                  onPressed: _showCategoryPicker,
+                  icon: const Icon(Icons.category, size: 20),
+                  label: Text(
+                    _selectedCategory?.title ?? '选择分类',
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                ),
+              const SizedBox(width: 8),
+              if (_sortOptions.isNotEmpty)
+                DropdownButton<String>(
+                  value: _currentSort.isNotEmpty ? _currentSort : null,
+                  hint: const Text('选择排序'),
+                  items: _sortOptions
+                      .map((s) => DropdownMenuItem<String>(
+                            value: s.value,
+                            child: Text(s.name),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setState(() => _currentSort = value);
+                  },
+                ),
+            ],
           ),
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const SettingsScreen()),
-              );
-            },
-          ),
-        ],
-      ),
-      body: _buildBody(),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddModuleDialog(context),
-        child: const Icon(Icons.add),
-      ),
+        ),
+        const Divider(height: 1),
+        Expanded(child: _buildBody()),
+      ],
     );
   }
 
@@ -226,106 +896,56 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_loading) {
       return const Center(child: CircularProgressIndicator());
     }
-    
+
     if (_error != null) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('错误: $_error', style: const TextStyle(color: Colors.red)),
-            const SizedBox(height: 20),
+            const Icon(Icons.error_outline, size: 60, color: Colors.red),
+            const SizedBox(height: 16),
+            Text('加载失败', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Text(
+                _error!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.grey),
+              ),
+            ),
+            const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: _loadModules,
+              onPressed: _loadCategories,
               child: const Text('重试'),
             ),
           ],
         ),
       );
     }
-    
-    if (_modules.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.folder_open, size: 80, color: Colors.grey),
-            const SizedBox(height: 20),
-            const Text('暂无模块', style: TextStyle(fontSize: 18, color: Colors.grey)),
-            const SizedBox(height: 10),
-            const Text(
-              '请将 .js 模块文件放入 modules 目录',
-              style: TextStyle(color: Colors.grey),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () async {
-                final modules = await scanAndRegisterModules();
-                setState(() => _modules = modules);
-              },
-              child: const Text('扫描模块'),
-            ),
-          ],
-        ),
+
+    if (_categories.isEmpty) {
+      return const Center(child: Text('暂无分类'));
+    }
+
+    if (_selectedCategory != null) {
+      return ComicsView(
+        key: ValueKey('${widget.module.id}_${_selectedCategory!.id}'),
+        moduleId: widget.module.id,
+        moduleName: widget.module.name,
+        categorySlug: _selectedCategory!.id,
+        categoryTitle: _selectedCategory!.title,
+        onHistoryChanged: widget.onHistoryChanged,
+        sortOptions: _sortOptions,
+        sortValue: _currentSort,
+        onSortChanged: (value) {
+          setState(() => _currentSort = value);
+        },
+        showSortControls: false,
       );
     }
-    
-    return ListView.builder(
-      itemCount: _modules.length,
-      itemBuilder: (context, index) {
-        final module = _modules[index];
-        return ListTile(
-          leading: CircleAvatar(
-            backgroundColor: module.enabled ? Colors.green : Colors.grey,
-            child: Text(module.name[0].toUpperCase()),
-          ),
-          title: Text(module.name),
-          subtitle: Text('${module.id} - v${module.version}'),
-          trailing: Switch(
-            value: module.enabled,
-            onChanged: (enabled) async {
-              await setModuleEnabled(moduleId: module.id, enabled: enabled);
-              _loadModules();
-            },
-          ),
-          onTap: module.enabled ? () => _openModule(module) : null,
-        );
-      },
-    );
-  }
 
-  void _openModule(ModuleInfo module) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => ModuleScreen(module: module),
-      ),
-    );
-  }
-
-  void _showAddModuleDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('添加模块'),
-        content: const Text(
-          '将 .js 模块文件放入 modules 目录，然后点击扫描。\n\n'
-          '模块目录路径可在设置中查看。',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('取消'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.of(context).pop();
-              final modules = await scanAndRegisterModules();
-              setState(() => _modules = modules);
-            },
-            child: const Text('扫描模块'),
-          ),
-        ],
-      ),
-    );
+    return const Center(child: Text('请选择分类'));
   }
 }
 
@@ -783,6 +1403,11 @@ class ComicsView extends StatefulWidget {
   final String moduleName;
   final String categorySlug;
   final String categoryTitle;
+  final VoidCallback? onHistoryChanged;
+  final List<SortOption>? sortOptions;
+  final String? sortValue;
+  final ValueChanged<String>? onSortChanged;
+  final bool showSortControls;
 
   const ComicsView({
     super.key,
@@ -790,6 +1415,11 @@ class ComicsView extends StatefulWidget {
     required this.moduleName,
     required this.categorySlug,
     required this.categoryTitle,
+    this.onHistoryChanged,
+    this.sortOptions,
+    this.sortValue,
+    this.onSortChanged,
+    this.showSortControls = true,
   });
 
   @override
@@ -812,13 +1442,35 @@ class _ComicsViewState extends State<ComicsView> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    _loadSortOptions();
+    if (widget.sortOptions != null) {
+      _sortOptions = widget.sortOptions!;
+      _currentSort = widget.sortValue ??
+          (widget.sortOptions!.isNotEmpty ? widget.sortOptions!.first.value : '');
+      _loadComics();
+    } else {
+      _loadSortOptions();
+    }
   }
 
   @override
   void dispose() {
     _scrollController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant ComicsView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.sortOptions != null &&
+        (oldWidget.sortOptions != widget.sortOptions ||
+            oldWidget.sortValue != widget.sortValue)) {
+      _sortOptions = widget.sortOptions ?? _sortOptions;
+      _currentSort = widget.sortValue ??
+          (widget.sortOptions != null && widget.sortOptions!.isNotEmpty
+              ? widget.sortOptions!.first.value
+              : _currentSort);
+      _loadComics(refresh: true);
+    }
   }
 
   void _onScroll() {
@@ -857,10 +1509,11 @@ class _ComicsViewState extends State<ComicsView> {
     });
 
     try {
+      final sortBy = widget.sortValue ?? _currentSort;
       final result = await getComics(
         moduleId: widget.moduleId,
         categorySlug: widget.categorySlug,
-        sortBy: _currentSort,
+        sortBy: sortBy,
         page: _currentPage,
       );
 
@@ -890,14 +1543,18 @@ class _ComicsViewState extends State<ComicsView> {
 
   void _changeSort(String sortId) {
     if (_currentSort == sortId) return;
-    setState(() {
-      _currentSort = sortId;
-    });
-    _loadComics(refresh: true);
+    if (widget.onSortChanged != null) {
+      widget.onSortChanged!(sortId);
+    } else {
+      setState(() {
+        _currentSort = sortId;
+      });
+      _loadComics(refresh: true);
+    }
   }
 
-  void _openComic(ComicSimple comic) {
-    Navigator.of(context).push(
+  Future<void> _openComic(ComicSimple comic) async {
+    await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => ComicInfoScreen(
           moduleId: widget.moduleId,
@@ -907,6 +1564,7 @@ class _ComicsViewState extends State<ComicsView> {
         ),
       ),
     );
+    widget.onHistoryChanged?.call();
   }
 
   @override
@@ -948,8 +1606,7 @@ class _ComicsViewState extends State<ComicsView> {
 
     return Column(
       children: [
-        // 排序和刷新按钮
-        if (_sortOptions.isNotEmpty)
+        if (widget.showSortControls && _sortOptions.isNotEmpty)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             child: Row(
@@ -961,7 +1618,8 @@ class _ComicsViewState extends State<ComicsView> {
                     scrollDirection: Axis.horizontal,
                     child: Row(
                       children: _sortOptions.map((option) {
-                        final isSelected = _currentSort == option.value;
+                        final isSelected = (_currentSort == option.value) ||
+                            (widget.sortValue != null && widget.sortValue == option.value);
                         return Padding(
                           padding: const EdgeInsets.only(right: 8),
                           child: ChoiceChip(
@@ -974,15 +1632,9 @@ class _ComicsViewState extends State<ComicsView> {
                     ),
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.refresh),
-                  onPressed: _refresh,
-                  tooltip: '刷新',
-                ),
               ],
             ),
           ),
-        // 漫画列表
         Expanded(
           child: RefreshIndicator(
             onRefresh: _refresh,

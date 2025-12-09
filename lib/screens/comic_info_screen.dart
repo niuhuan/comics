@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:comics/src/rust/api/module_api.dart';
 import 'package:comics/src/rust/modules/types.dart';
 import 'package:comics/src/cached_image_widget.dart';
+import 'package:comics/src/history_manager.dart';
 import 'comic_reader_screen.dart';
 
 /// 漫画详情页面
@@ -53,6 +54,19 @@ class _ComicInfoScreenState extends State<ComicInfoScreen> {
       setState(() {
         _comicDetail = detail;
         _loadingDetail = false;
+      });
+
+      // 记录历史（不阻塞 UI）
+      HistoryManager.instance
+          .recordVisit(
+            moduleId: widget.moduleId,
+            moduleName: widget.moduleName,
+            comicId: widget.comicId,
+            comicTitle: detail.title,
+            thumb: detail.thumb,
+          )
+          .catchError((e) {
+        debugPrint('Failed to record history: $e');
       });
     } catch (e) {
       setState(() {
