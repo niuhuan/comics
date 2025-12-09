@@ -276,7 +276,12 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
     try {
       await saveAppSetting(key: 'reader_no_animation', value: noAnimation.toString());
     } catch (e) {
-      // 忽略错误
+      // 保存失败，恢复原状态
+      if (mounted) {
+        setState(() {
+          _noAnimation = !noAnimation;
+        });
+      }
     }
   }
 
@@ -1707,11 +1712,12 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
               ),
               trailing: Switch(
                 value: !_noAnimation,
-                onChanged: (value) {
+                onChanged: (value) async {
+                  final newNoAnimation = !value;
                   setState(() {
-                    _noAnimation = !value;
+                    _noAnimation = newNoAnimation;
                   });
-                  _saveNoAnimation(_noAnimation);
+                  await _saveNoAnimation(newNoAnimation);
                 },
               ),
             ),

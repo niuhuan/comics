@@ -683,9 +683,14 @@ class _HomeScreenState extends State<HomeScreen> {
       await _loadModules(rescan: false);
       await _loadHistory();
 
-      if (_selectedModule?.id == module.id) {
+      // 在 _loadModules 完成后，检查是否需要更新选中的模块
+      // 因为 _loadModules 已经更新了 _selectedModule，这里只需要确保 UI 刷新
+      if (!mounted) return;
+      
+      // 如果删除的是当前选中的模块，且列表不为空，确保选中第一个
+      if (_modules.isNotEmpty && (_selectedModule == null || _selectedModule!.id == module.id)) {
         setState(() {
-          _selectedModule = _modules.isNotEmpty ? _modules.first : null;
+          _selectedModule = _modules.first;
         });
       }
 
