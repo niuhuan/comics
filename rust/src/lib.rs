@@ -72,6 +72,9 @@ pub async fn init_application(root: String) -> anyhow::Result<()> {
     // 初始化模块管理器
     api::module_api::init_module_manager(&modules_dir)?;
     
+    // 初始化代理设置（从数据库加载）
+    api::proxy_api::init_proxy().await?;
+    
     tracing::info!("Application initialized at: {}", root);
     
     Ok(())

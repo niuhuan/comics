@@ -9,37 +9,45 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `fmt`, `from`
 
 /// 发送 HTTP GET 请求
-Future<HttpResponseDto> httpGet(
-        {required String url, required Map<String, String> headers}) =>
-    RustLib.instance.api.crateApiHttpApiHttpGet(url: url, headers: headers);
+Future<HttpResponseDto> httpGet({
+  required String url,
+  required Map<String, String> headers,
+}) => RustLib.instance.api.crateApiHttpApiHttpGet(url: url, headers: headers);
 
 /// 发送 HTTP POST 请求
-Future<HttpResponseDto> httpPost(
-        {required String url,
-        required Map<String, String> headers,
-        String? body}) =>
-    RustLib.instance.api
-        .crateApiHttpApiHttpPost(url: url, headers: headers, body: body);
+Future<HttpResponseDto> httpPost({
+  required String url,
+  required Map<String, String> headers,
+  String? body,
+}) => RustLib.instance.api.crateApiHttpApiHttpPost(
+  url: url,
+  headers: headers,
+  body: body,
+);
 
 /// 发送自定义 HTTP 请求
-Future<HttpResponseDto> httpRequest(
-        {required String url,
-        required String method,
-        required Map<String, String> headers,
-        String? body,
-        required BigInt timeoutSecs}) =>
-    RustLib.instance.api.crateApiHttpApiHttpRequest(
-        url: url,
-        method: method,
-        headers: headers,
-        body: body,
-        timeoutSecs: timeoutSecs);
+Future<HttpResponseDto> httpRequest({
+  required String url,
+  required String method,
+  required Map<String, String> headers,
+  String? body,
+  required BigInt timeoutSecs,
+}) => RustLib.instance.api.crateApiHttpApiHttpRequest(
+  url: url,
+  method: method,
+  headers: headers,
+  body: body,
+  timeoutSecs: timeoutSecs,
+);
 
 /// 下载文件
-Future<Uint8List> httpDownload(
-        {required String url, required Map<String, String> headers}) =>
-    RustLib.instance.api
-        .crateApiHttpApiHttpDownload(url: url, headers: headers);
+Future<Uint8List> httpDownload({
+  required String url,
+  required Map<String, String> headers,
+}) => RustLib.instance.api.crateApiHttpApiHttpDownload(
+  url: url,
+  headers: headers,
+);
 
 /// HTTP 响应 DTO（用于 Flutter）
 class HttpResponseDto {

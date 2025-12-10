@@ -9,31 +9,36 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `fmt`
 
 /// 获取缓存的图片文件路径
-Future<String?> getCachedImage(
-        {required String moduleId, required String url}) =>
-    RustLib.instance.api
-        .crateApiImageCacheApiGetCachedImage(moduleId: moduleId, url: url);
+Future<String?> getCachedImage({
+  required String moduleId,
+  required String url,
+}) => RustLib.instance.api.crateApiImageCacheApiGetCachedImage(
+  moduleId: moduleId,
+  url: url,
+);
 
 /// 保存图片到缓存
-Future<void> saveImageToCache(
-        {required String moduleId,
-        required String url,
-        required String filePath,
-        required String contentType,
-        required PlatformInt64 fileSize,
-        PlatformInt64? expireDays}) =>
-    RustLib.instance.api.crateApiImageCacheApiSaveImageToCache(
-        moduleId: moduleId,
-        url: url,
-        filePath: filePath,
-        contentType: contentType,
-        fileSize: fileSize,
-        expireDays: expireDays);
+Future<void> saveImageToCache({
+  required String moduleId,
+  required String url,
+  required String filePath,
+  required String contentType,
+  required PlatformInt64 fileSize,
+  PlatformInt64? expireDays,
+}) => RustLib.instance.api.crateApiImageCacheApiSaveImageToCache(
+  moduleId: moduleId,
+  url: url,
+  filePath: filePath,
+  contentType: contentType,
+  fileSize: fileSize,
+  expireDays: expireDays,
+);
 
 /// 清除指定模块的图片缓存
-Future<BigInt> clearImageCacheByModule({required String moduleId}) =>
-    RustLib.instance.api
-        .crateApiImageCacheApiClearImageCacheByModule(moduleId: moduleId);
+Future<BigInt> clearImageCacheByModule({required String moduleId}) => RustLib
+    .instance
+    .api
+    .crateApiImageCacheApiClearImageCacheByModule(moduleId: moduleId);
 
 /// 清除所有图片缓存
 Future<BigInt> clearAllImageCache() =>
@@ -54,14 +59,15 @@ Future<ImageCacheStats> getImageCacheStats() =>
 /// - image_data_base64: 图片数据的 base64 编码
 /// - params_json: 额外的参数（JSON 格式），例如 {"chapterId": "123", "imageName": "001.jpg"}
 /// 返回：处理后的图片数据（base64 编码），如果模块没有 processImage 函数或处理失败，返回原始数据
-Future<String> processImageWithModule(
-        {required String moduleId,
-        required String imageDataBase64,
-        required String paramsJson}) =>
-    RustLib.instance.api.crateApiImageCacheApiProcessImageWithModule(
-        moduleId: moduleId,
-        imageDataBase64: imageDataBase64,
-        paramsJson: paramsJson);
+Future<String> processImageWithModule({
+  required String moduleId,
+  required String imageDataBase64,
+  required String paramsJson,
+}) => RustLib.instance.api.crateApiImageCacheApiProcessImageWithModule(
+  moduleId: moduleId,
+  imageDataBase64: imageDataBase64,
+  paramsJson: paramsJson,
+);
 
 /// 缓存统计信息
 class ImageCacheStats {

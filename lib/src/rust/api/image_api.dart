@@ -12,16 +12,20 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 /// 获取图片信息（宽高、格式）
 /// 参数：base64 编码的图片数据
 /// 返回：图片信息 JSON 字符串
-Future<String> getImageInfo({required String imageDataBase64}) =>
-    RustLib.instance.api
-        .crateApiImageApiGetImageInfo(imageDataBase64: imageDataBase64);
+Future<String> getImageInfo({required String imageDataBase64}) => RustLib
+    .instance
+    .api
+    .crateApiImageApiGetImageInfo(imageDataBase64: imageDataBase64);
 
 /// 解码图片并重新排列行
 /// 参数：
 /// - image_data_base64: base64 编码的图片数据
 /// - rows: 要分割的行数
 /// 返回：重新排列后的图片数据（base64 编码的 PNG）
-Future<String> rearrangeImageRows(
-        {required String imageDataBase64, required int rows}) =>
-    RustLib.instance.api.crateApiImageApiRearrangeImageRows(
-        imageDataBase64: imageDataBase64, rows: rows);
+Future<String> rearrangeImageRows({
+  required String imageDataBase64,
+  required int rows,
+}) => RustLib.instance.api.crateApiImageApiRearrangeImageRows(
+  imageDataBase64: imageDataBase64,
+  rows: rows,
+);

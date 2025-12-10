@@ -199,10 +199,7 @@ class ComicsPage {
   final PageInfo pageInfo;
   final List<ComicSimple> docs;
 
-  const ComicsPage({
-    required this.pageInfo,
-    required this.docs,
-  });
+  const ComicsPage({required this.pageInfo, required this.docs});
 
   @override
   int get hashCode => pageInfo.hashCode ^ docs.hashCode;
@@ -250,10 +247,7 @@ class EpPage {
   final PageInfo pageInfo;
   final List<Ep> docs;
 
-  const EpPage({
-    required this.pageInfo,
-    required this.docs,
-  });
+  const EpPage({required this.pageInfo, required this.docs});
 
   @override
   int get hashCode => pageInfo.hashCode ^ docs.hashCode;
@@ -345,10 +339,7 @@ class Picture {
   final String id;
   final RemoteImageInfo media;
 
-  const Picture({
-    required this.id,
-    required this.media,
-  });
+  const Picture({required this.id, required this.media});
 
   @override
   int get hashCode => id.hashCode ^ media.hashCode;
@@ -367,10 +358,7 @@ class PicturePage {
   final PageInfo pageInfo;
   final List<Picture> docs;
 
-  const PicturePage({
-    required this.pageInfo,
-    required this.docs,
-  });
+  const PicturePage({required this.pageInfo, required this.docs});
 
   @override
   int get hashCode => pageInfo.hashCode ^ docs.hashCode;
@@ -423,10 +411,7 @@ class SortOption {
   final String value;
   final String name;
 
-  const SortOption({
-    required this.value,
-    required this.name,
-  });
+  const SortOption({required this.value, required this.name});
 
   @override
   int get hashCode => value.hashCode ^ name.hashCode;

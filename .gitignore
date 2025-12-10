@@ -48,3 +48,6 @@ app.*.map.json
 /design/
 /modules/
 /android/app/src/main/jniLibs/
+
+# FVM Version Cache
+.fvm/

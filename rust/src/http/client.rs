@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::Duration;
 
+use crate::http::proxy::ProxyManager;
+
 /// HTTP 请求配置
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HttpRequest {
@@ -36,14 +38,7 @@ pub struct HttpClient {
 
 impl HttpClient {
     pub fn new() -> anyhow::Result<Self> {
-        let client = Client::builder()
-            .timeout(Duration::from_secs(30))
-            .connect_timeout(Duration::from_secs(10))
-            .pool_max_idle_per_host(10)
-            .danger_accept_invalid_certs(true)  // 禁用证书验证（用于分流IP访问）
-            .build()?;
-        
-        Ok(Self { client })
+        Self::with_config(30, None)
     }
 
     pub fn with_config(timeout_secs: u64, user_agent: Option<String>) -> anyhow::Result<Self> {
@@ -55,6 +50,19 @@ impl HttpClient {
         
         if let Some(ua) = user_agent {
             builder = builder.user_agent(ua);
+        }
+        
+        // 从代理管理器获取代理配置
+        if let Some(proxy_result) = ProxyManager::instance().get_reqwest_proxy() {
+            match proxy_result {
+                Ok(proxy) => {
+                    builder = builder.proxy(proxy);
+                    tracing::debug!("HTTP 客户端已配置代理");
+                }
+                Err(e) => {
+                    tracing::warn!("配置代理失败，将不使用代理: {}", e);
+                }
+            }
         }
         
         let client = builder.build()?;
