@@ -10,6 +10,7 @@ import 'package:comics/src/rust/api/module_api.dart';
 import 'package:comics/src/rust/api/property_api.dart';
 import 'package:comics/src/rust/modules/types.dart';
 import 'package:comics/src/cached_image_widget.dart';
+import 'package:comics/src/image_cache_manager.dart';
 import 'package:comics/src/gesture_zoom_box.dart';
 import 'comics_screen.dart' show getImageUrl;
 
@@ -1484,6 +1485,7 @@ class _ListViewReaderState extends _ImageReaderContentState
 
 class _GalleryReaderState extends _ImageReaderContentState {
   late PageController _pageController;
+  final _cacheManager = ImageCacheManager();
 
   @override
   void initState() {
@@ -1520,11 +1522,31 @@ class _GalleryReaderState extends _ImageReaderContentState {
   void _needScrollBackward() {}
 
   _preloadJump(int index, {bool init = false}) {
-    // 使用 CachedImageWidget 内部缓存逻辑，这里无需手动预缓存
-    return;
+    void fn() async {
+      // 预加载当前和后续两张
+      for (var i = index; i < index + 3 && i < widget.struct.images.length; i++) {
+        final picture = widget.struct.images[i];
+        final url = _composeUrl(picture);
+        final params = _processParams(widget.struct.moduleId, picture);
+        await _cacheManager.cacheImage(
+          widget.struct.moduleId,
+          url,
+          headers: picture.media.headers,
+          processParams: params,
+        );
+      }
+    }
+
+    if (init) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => fn());
+    } else {
+      fn();
+    }
   }
 
   void _onGalleryPageChange(int to) {
+    // 预加载后续页面
+    _preloadJump(to);
     if (to >= 0 && to < widget.struct.images.length) {
       super._onCurrentChange(to);
     }
@@ -1566,6 +1588,34 @@ class _GalleryReaderState extends _ImageReaderContentState {
     );
   }
 
+  String _composeUrl(Picture picture) {
+    final info = picture.media;
+    if (info.fileServer.isEmpty) return info.path;
+    return '${info.fileServer}${info.path}';
+  }
+
+  Map<String, dynamic>? _processParams(String moduleId, Picture picture) {
+    // 优先使用 metadata
+    if (picture.metadata.isNotEmpty) {
+      return picture.metadata.map((k, v) => MapEntry(k, v as dynamic));
+    }
+    // 针对 jasmine 的参数提取
+    if (moduleId == 'jasmine') {
+      try {
+        final uri = Uri.parse(_composeUrl(picture));
+        final segments = uri.pathSegments;
+        final idx = segments.indexOf('photos');
+        if (idx != -1 && idx + 2 < segments.length) {
+          return {
+            'chapterId': segments[idx + 1],
+            'imageName': segments[idx + 2],
+          };
+        }
+      } catch (_) {}
+    }
+    return null;
+  }
+
   Widget _buildNextEpController() {
     if (super._fullscreenController() ||
         _current < widget.struct.images.length - 1) {
@@ -1596,6 +1646,7 @@ class _TwoPageGalleryReaderState extends _ImageReaderContentState {
   late final List<Size?> _trueSizes = [];
   List<ImageProvider> ips = [];
   List<PhotoViewGalleryPageOptions> options = [];
+  final _cacheManager = ImageCacheManager();
 
   @override
   void initState() {
@@ -1685,9 +1736,17 @@ class _TwoPageGalleryReaderState extends _ImageReaderContentState {
   void _needScrollForward() {}
 
   _preloadJump(int index, {bool init = false}) {
-    fn() {
-      for (var i = index; i < index + 4 && i < ips.length; i++) {
-        precacheImage(ips[i], context);
+    void fn() async {
+      for (var i = index; i < index + 4 && i < widget.struct.images.length; i++) {
+        final picture = widget.struct.images[i];
+        final url = _composeUrl(picture);
+        final params = _processParams(widget.struct.moduleId, picture);
+        await _cacheManager.cacheImage(
+          widget.struct.moduleId,
+          url,
+          headers: picture.media.headers,
+          processParams: params,
+        );
       }
     }
 
@@ -1715,9 +1774,7 @@ class _TwoPageGalleryReaderState extends _ImageReaderContentState {
 
   void _onGalleryPageChange(int to) {
     var toIndex = to * 2;
-    for (var i = toIndex + 2; i < toIndex + 5 && i < ips.length; i++) {
-      precacheImage(ips[i], context);
-    }
+    _preloadJump(toIndex);
     if (to >= 0 && to < widget.struct.images.length) {
       super._onCurrentChange(toIndex);
     }
@@ -1741,5 +1798,31 @@ class _TwoPageGalleryReaderState extends _ImageReaderContentState {
         ),
       ),
     );
+  }
+
+  String _composeUrl(Picture picture) {
+    final info = picture.media;
+    if (info.fileServer.isEmpty) return info.path;
+    return '${info.fileServer}${info.path}';
+  }
+
+  Map<String, dynamic>? _processParams(String moduleId, Picture picture) {
+    if (picture.metadata.isNotEmpty) {
+      return picture.metadata.map((k, v) => MapEntry(k, v as dynamic));
+    }
+    if (moduleId == 'jasmine') {
+      try {
+        final uri = Uri.parse(_composeUrl(picture));
+        final segments = uri.pathSegments;
+        final idx = segments.indexOf('photos');
+        if (idx != -1 && idx + 2 < segments.length) {
+          return {
+            'chapterId': segments[idx + 1],
+            'imageName': segments[idx + 2],
+          };
+        }
+      } catch (_) {}
+    }
+    return null;
   }
 }
