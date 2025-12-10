@@ -12,6 +12,7 @@ import 'package:comics/src/rust/modules/types.dart';
 import 'package:comics/src/cached_image_widget.dart';
 import 'package:comics/src/image_cache_manager.dart';
 import 'package:comics/src/gesture_zoom_box.dart';
+import 'package:comics/src/reader_progress.dart';
 import 'comics_screen.dart' show getImageUrl;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -163,6 +164,7 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
   late Future<List<Picture>> _future;
   int? _lastChangeRank;
   bool _replacement = false;
+  int? _resumePosition;
 
   Future<List<Picture>> _load() async {
     // 加载所有页面的图片
@@ -196,7 +198,13 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
 
   Future _onPositionChange(int position) async {
     _lastChangeRank = position;
-    // TODO: 保存阅读位置到历史记录
+    // 保存阅读位置
+    await ReaderProgressManager.setProgress(
+      moduleId: widget.moduleId,
+      comicId: widget.comicId,
+      epId: _ep.id,
+      position: position,
+    );
   }
 
   FutureOr<dynamic> _onChangeEp(int epOrder) {
@@ -248,7 +256,21 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
     _ep = widget.currentEp;
     // INIT
     _future = _load();
+    _loadProgress();
     super.initState();
+  }
+
+  Future<void> _loadProgress() async {
+    if (widget.initPosition == null) {
+      final pos = await ReaderProgressManager.getProgress(
+        moduleId: widget.moduleId,
+        comicId: widget.comicId,
+        epId: _ep.id,
+      );
+      if (mounted) {
+        setState(() => _resumePosition = pos);
+      }
+    }
   }
 
   @override
@@ -330,7 +352,7 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
               fullScreen: _fullScreen,
               onFullScreenChange: _onFullScreenChange,
               onPositionChange: _onPositionChange,
-              initPosition: widget.initPosition,
+              initPosition: widget.initPosition ?? _resumePosition,
               epNameMap: epNameMap,
               epOrder: _ep.order,
               comicTitle: widget.comicTitle,
@@ -1662,8 +1684,8 @@ class _TwoPageGalleryReaderState extends _ImageReaderContentState {
     }
 
     // 创建双页选项
-    for (var index = 0; index < ips.length; index += 2) {
-      if (index + 1 < ips.length) {
+    for (var index = 0; index < widget.struct.images.length; index += 2) {
+      if (index + 1 < widget.struct.images.length) {
         // 双页
         options.add(
           PhotoViewGalleryPageOptions.customChild(
@@ -1671,8 +1693,15 @@ class _TwoPageGalleryReaderState extends _ImageReaderContentState {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Expanded(
-                  child: PhotoView(
-                    imageProvider: ips[index],
+                  child: PhotoView.customChild(
+                    child: Center(
+                      child: CachedImageWidget(
+                        imageInfo: widget.struct.images[index].media,
+                        moduleId: widget.struct.moduleId,
+                        metadata: widget.struct.images[index].metadata,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
                     backgroundDecoration: const BoxDecoration(color: Colors.black),
                     minScale: PhotoViewComputedScale.contained,
                     maxScale: PhotoViewComputedScale.covered * 2,
@@ -1680,8 +1709,15 @@ class _TwoPageGalleryReaderState extends _ImageReaderContentState {
                   ),
                 ),
                 Expanded(
-                  child: PhotoView(
-                    imageProvider: ips[index + 1],
+                  child: PhotoView.customChild(
+                    child: Center(
+                      child: CachedImageWidget(
+                        imageInfo: widget.struct.images[index + 1].media,
+                        moduleId: widget.struct.moduleId,
+                        metadata: widget.struct.images[index + 1].metadata,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
                     backgroundDecoration: const BoxDecoration(color: Colors.black),
                     minScale: PhotoViewComputedScale.contained,
                     maxScale: PhotoViewComputedScale.covered * 2,
@@ -1695,8 +1731,15 @@ class _TwoPageGalleryReaderState extends _ImageReaderContentState {
       } else {
         // 单页
         options.add(
-          PhotoViewGalleryPageOptions(
-            imageProvider: ips[index],
+          PhotoViewGalleryPageOptions.customChild(
+            child: Center(
+              child: CachedImageWidget(
+                imageInfo: widget.struct.images[index].media,
+                moduleId: widget.struct.moduleId,
+                metadata: widget.struct.images[index].metadata,
+                fit: BoxFit.contain,
+              ),
+            ),
             minScale: PhotoViewComputedScale.contained,
             maxScale: PhotoViewComputedScale.covered * 3,
           ),

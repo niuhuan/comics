@@ -4,6 +4,7 @@ import 'package:comics/src/rust/modules/types.dart';
 import 'package:comics/src/cached_image_widget.dart';
 import 'package:comics/src/history_manager.dart';
 import 'comic_reader_screen.dart';
+import 'package:comics/src/reader_progress.dart';
 
 /// 漫画详情页面
 class ComicInfoScreen extends StatefulWidget {
@@ -32,6 +33,8 @@ class _ComicInfoScreenState extends State<ComicInfoScreen> {
   String? _detailError;
   String? _epsError;
   int _tabIndex = 0;
+  Ep? _resumeEp;
+  int? _resumePosition;
 
   @override
   void initState() {
@@ -102,10 +105,35 @@ class _ComicInfoScreenState extends State<ComicInfoScreen> {
         _eps = allEps;
         _loadingEps = false;
       });
+
+      // 读取继续阅读位置（选择最后一个有进度的章节）
+      _loadResumeProgress();
     } catch (e) {
       setState(() {
         _epsError = e.toString();
         _loadingEps = false;
+      });
+    }
+  }
+
+  Future<void> _loadResumeProgress() async {
+    Ep? lastWithProgress;
+    int? lastPos;
+    for (final ep in _eps) {
+      final pos = await ReaderProgressManager.getProgress(
+        moduleId: widget.moduleId,
+        comicId: widget.comicId,
+        epId: ep.id,
+      );
+      if (pos != null) {
+        lastWithProgress = ep; // 持续覆盖，取列表中的最后一个
+        lastPos = pos;
+      }
+    }
+    if (mounted) {
+      setState(() {
+        _resumeEp = lastWithProgress;
+        _resumePosition = lastPos;
       });
     }
   }
@@ -478,9 +506,25 @@ class _ComicInfoScreenState extends State<ComicInfoScreen> {
       );
     }
 
-    // 开始阅读按钮
+    // 开始/继续阅读按钮
     return Column(
       children: [
+        // 继续阅读按钮（如果有进度）
+        if (_resumeEp != null && _resumePosition != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _openReaderWithResume(_resumeEp!, _resumePosition!),
+                icon: const Icon(Icons.history),
+                label: Text('继续阅读 · ${_resumeEp!.title}'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+          ),
         // 开始阅读按钮
         Padding(
           padding: const EdgeInsets.all(16),
@@ -527,6 +571,21 @@ class _ComicInfoScreenState extends State<ComicInfoScreen> {
         ),
         const SizedBox(height: 32),
       ],
+    );
+  }
+
+  void _openReaderWithResume(Ep ep, int position) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ComicReaderScreen(
+          moduleId: widget.moduleId,
+          comicId: widget.comicId,
+          comicTitle: _comicDetail?.title ?? widget.comicTitle,
+          epList: _eps,
+          currentEp: ep,
+          initPosition: position,
+        ),
+      ),
     );
   }
 
