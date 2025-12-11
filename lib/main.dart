@@ -1971,11 +1971,84 @@ class _ModuleSettingsScreenState extends State<ModuleSettingsScreen> {
   bool _obscurePassword = true;
   String? _message;
   bool _isSuccess = false;
+  Map<String, dynamic>? _authForm;
+  final Map<String, String> _formValues = {};
 
   @override
   void initState() {
     super.initState();
     _loadSavedCredentials();
+    _loadAuthForm();
+    _loadAuthValues();
+  }
+  Future<void> _loadAuthForm() async {
+    try {
+      final jsonStr = await callModuleFunction(
+        moduleId: widget.module.id,
+        funcName: 'getAuthForm',
+        argsJson: '{}',
+      );
+      if (jsonStr.isNotEmpty) {
+        final obj = jsonDecode(jsonStr) as Map<String, dynamic>;
+        setState(() {
+          _authForm = obj;
+        });
+      }
+    } catch (e) {
+      debugPrint('No auth form for module ${widget.module.id}: $e');
+    }
+  }
+
+  Future<void> _loadAuthValues() async {
+    try {
+      final jsonStr = await callModuleFunction(
+        moduleId: widget.module.id,
+        funcName: 'getAuthValues',
+        argsJson: '{}',
+      );
+      if (jsonStr.isNotEmpty) {
+        final obj = jsonDecode(jsonStr) as Map<String, dynamic>;
+        obj.forEach((k, v) {
+          if (v is String) {
+            _formValues[k] = v;
+          } else if (v != null) {
+            _formValues[k] = v.toString();
+          }
+        });
+        if (mounted) setState(() {});
+      }
+    } catch (e) {
+      debugPrint('No auth values for module ${widget.module.id}: $e');
+    }
+  }
+
+  Future<void> _submitAuthForm() async {
+    if (_loading) return;
+    setState(() {
+      _loading = true;
+      _message = null;
+    });
+    try {
+      final argsJson = jsonEncode(_formValues);
+      final rsp = await callModuleFunction(
+        moduleId: widget.module.id,
+        funcName: 'submitAuthForm',
+        argsJson: argsJson,
+      );
+      final obj = jsonDecode(rsp);
+      final success = (obj is Map && (obj['success'] == true));
+      setState(() {
+        _message = success ? '保存成功' : '保存失败';
+        _isSuccess = success;
+        _loading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _message = '保存失败: $e';
+        _isSuccess = false;
+        _loading = false;
+      });
+    }
   }
 
   @override
@@ -2045,9 +2118,7 @@ class _ModuleSettingsScreenState extends State<ModuleSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 检查是否需要账号设置（pikapika 和 jasmine）
-    final needsLogin = widget.module.id == 'pikapika' || 
-                       widget.module.id == 'jasmine';
+    final hasDynamicForm = _authForm != null && _authForm!['fields'] is List;
 
     return Scaffold(
       appBar: AppBar(
@@ -2094,21 +2165,21 @@ class _ModuleSettingsScreenState extends State<ModuleSettingsScreen> {
           
           const SizedBox(height: 16),
           
-          // 账号设置（仅 pikapika 和 jasmine）
-          if (needsLogin) ...[
+          // 动态模块设置表单（若模块提供）
+          if (hasDynamicForm) ...[
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Row(
+                    Row(
                       children: [
-                        Icon(Icons.account_circle),
-                        SizedBox(width: 8),
+                        const Icon(Icons.settings_suggest),
+                        const SizedBox(width: 8),
                         Text(
-                          '账号设置',
-                          style: TextStyle(
+                          '模块配置',
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
@@ -2116,38 +2187,104 @@ class _ModuleSettingsScreenState extends State<ModuleSettingsScreen> {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    TextField(
-                      controller: _usernameController,
-                      decoration: const InputDecoration(
-                        labelText: '账号/邮箱',
-                        prefixIcon: Icon(Icons.person),
-                        border: OutlineInputBorder(),
-                      ),
-                      enabled: !_loading,
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _passwordController,
-                      obscureText: _obscurePassword,
-                      decoration: InputDecoration(
-                        labelText: '密码',
-                        prefixIcon: const Icon(Icons.lock),
-                        border: const OutlineInputBorder(),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscurePassword 
-                                ? Icons.visibility_off 
-                                : Icons.visibility,
+                    ...(_authForm!['fields'] as List).map((f) {
+                      final field = f as Map<String, dynamic>;
+                      final key = field['key'] as String? ?? '';
+                      final type = field['type'] as String? ?? 'text';
+                      final label = field['label'] as String? ?? key;
+                      final placeholder = field['placeholder'] as String? ?? '';
+                      Widget w;
+                      if (type == 'password') {
+                        w = TextField(
+                          onChanged: (v) => _formValues[key] = v,
+                          obscureText: _obscurePassword,
+                          decoration: InputDecoration(
+                            labelText: label,
+                            hintText: placeholder,
+                            prefixIcon: const Icon(Icons.lock),
+                            border: const OutlineInputBorder(),
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                              ),
+                              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                            ),
                           ),
-                          onPressed: () {
-                            setState(() {
-                              _obscurePassword = !_obscurePassword;
-                            });
-                          },
-                        ),
-                      ),
-                      enabled: !_loading,
-                    ),
+                          enabled: !_loading,
+                        );
+                      } else if (type == 'select') {
+                        final options = (field['options'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+                        final allowCustom = field['allowCustom'] == true;
+                        final customKey = field['customKey'] as String? ?? key;
+                        final items = options.map((o) => DropdownMenuItem<String>(
+                          value: o['value'] as String,
+                          child: Text(o['label'] as String? ?? o['value'] as String),
+                        )).toList();
+                        // Add a custom option
+                        if (allowCustom) {
+                          items.add(const DropdownMenuItem<String>(
+                            value: '__CUSTOM__',
+                            child: Text('自定义'),
+                          ));
+                        }
+                        // Determine selected value safely
+                        String? selected = _formValues[key];
+                        final itemValues = items.map((e) => e.value).toList();
+                        if (selected == null || selected.isEmpty) {
+                          selected = null;
+                        } else if (!itemValues.contains(selected)) {
+                          // If not in list and custom allowed, choose custom
+                          selected = allowCustom ? '__CUSTOM__' : null;
+                        }
+                        w = Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            DropdownButtonFormField<String>(
+                              decoration: InputDecoration(
+                                labelText: label,
+                                border: const OutlineInputBorder(),
+                              ),
+                              // use initialValue to avoid deprecated warnings
+                              initialValue: selected,
+                              items: items,
+                              onChanged: (v) {
+                                setState(() {
+                                  _formValues[key] = v ?? '';
+                                });
+                              },
+                            ),
+                            if (allowCustom && (selected == '__CUSTOM__' || _formValues[key] == '__CUSTOM__'))
+                              Padding(
+                                padding: const EdgeInsets.only(top: 8),
+                                child: TextField(
+                                  decoration: InputDecoration(
+                                    labelText: '自定义 $label',
+                                    hintText: placeholder,
+                                    border: const OutlineInputBorder(),
+                                  ),
+                                  onChanged: (v) => _formValues[customKey] = v,
+                                  enabled: !_loading,
+                                ),
+                              ),
+                          ],
+                        );
+                      } else {
+                        w = TextField(
+                          onChanged: (v) => _formValues[key] = v,
+                          decoration: InputDecoration(
+                            labelText: label,
+                            hintText: placeholder,
+                            prefixIcon: const Icon(Icons.person),
+                            border: const OutlineInputBorder(),
+                          ),
+                          enabled: !_loading,
+                        );
+                      }
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: w,
+                      );
+                    }).cast<Widget>(),
                     const SizedBox(height: 16),
                     
                     // 提示消息
@@ -2186,14 +2323,12 @@ class _ModuleSettingsScreenState extends State<ModuleSettingsScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: _loading ? null : _saveCredentials,
+                        onPressed: _loading ? null : _submitAuthForm,
                         child: _loading
                             ? const SizedBox(
                                 width: 20,
                                 height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
+                                child: CircularProgressIndicator(strokeWidth: 2),
                               )
                             : const Text('保存'),
                       ),
