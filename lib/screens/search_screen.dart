@@ -64,13 +64,7 @@ class _SearchScreenState extends State<SearchScreen> {
     _saveKeywordToHistory(_keyword);
   }
 
-  void _onChanged(String value) {
-    _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 350), () {
-      if (!mounted) return;
-      _submitSearch();
-    });
-  }
+  // 改为仅在提交时搜索，不在输入变化时自动搜索
 
   Future<void> _loadHistory() async {
     try {
@@ -132,7 +126,7 @@ class _SearchScreenState extends State<SearchScreen> {
             border: InputBorder.none,
           ),
           textInputAction: TextInputAction.search,
-          onChanged: _onChanged,
+          // 仅提交时触发搜索
           onSubmitted: (_) => _submitSearch(),
         ),
         actions: [
