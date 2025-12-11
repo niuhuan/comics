@@ -9,12 +9,8 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('设置'),
-      ),
-      body: ListView(
-        children: [
+    return ListView(
+      children: [
           ListTile(
             leading: const Icon(Icons.folder),
             title: const Text('应用目录'),
@@ -66,7 +62,6 @@ class SettingsScreen extends StatelessWidget {
             },
           ),
         ],
-      ),
     );
   }
 }
