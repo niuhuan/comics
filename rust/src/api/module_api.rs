@@ -98,6 +98,31 @@ pub async fn delete_module(module_id: String) -> anyhow::Result<()> {
     Ok(())
 }
 
+/// 设置/清除模块来源URL
+#[frb]
+pub async fn set_module_source_url(module_id: String, source_url: Option<String>) -> anyhow::Result<()> {
+    let db = database::get_database()
+        .ok_or_else(|| anyhow::anyhow!("Database not initialized"))?;
+    let conn = db.read().await;
+    let now = chrono::Utc::now().naive_utc();
+
+    use sea_orm::{EntityTrait, Set, ActiveModelTrait};
+    use crate::database::entities::module_info;
+
+    let existing = module_info::Entity::find_by_id(&module_id)
+        .one(&*conn)
+        .await?;
+    if let Some(model) = existing {
+        let mut act: module_info::ActiveModel = model.into();
+        act.source_url = Set(source_url);
+        act.updated_at = Set(now);
+        act.update(&*conn).await?;
+        Ok(())
+    } else {
+        Err(anyhow::anyhow!("Module not found: {}", module_id))
+    }
+}
+
 /// 加载模块
 #[frb]
 pub async fn load_module(module_id: String) -> anyhow::Result<()> {

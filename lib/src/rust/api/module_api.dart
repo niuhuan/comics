@@ -33,6 +33,15 @@ Future<ModuleInfo> updateModule({required String moduleId}) =>
 Future<void> deleteModule({required String moduleId}) =>
     RustLib.instance.api.crateApiModuleApiDeleteModule(moduleId: moduleId);
 
+/// 设置/清除模块来源URL
+Future<void> setModuleSourceUrl({
+  required String moduleId,
+  String? sourceUrl,
+}) => RustLib.instance.api.crateApiModuleApiSetModuleSourceUrl(
+  moduleId: moduleId,
+  sourceUrl: sourceUrl,
+);
+
 /// 加载模块
 Future<void> loadModule({required String moduleId}) =>
     RustLib.instance.api.crateApiModuleApiLoadModule(moduleId: moduleId);

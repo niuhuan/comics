@@ -37,7 +37,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1854014460;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -320161379;
 
 // Section: executor
 
@@ -2210,6 +2210,47 @@ fn wire__crate__api__module_api__set_module_enabled_impl(
         },
     )
 }
+fn wire__crate__api__module_api__set_module_source_url_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "set_module_source_url",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_module_id = <String>::sse_decode(&mut deserializer);
+            let api_source_url = <Option<String>>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || async move {
+                        let output_ok = crate::api::module_api::set_module_source_url(
+                            api_module_id,
+                            api_source_url,
+                        )
+                        .await?;
+                        Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
 fn wire__crate__api__module_api__set_module_storage_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -3040,12 +3081,18 @@ fn pde_ffi_dispatcher_primary_impl(
         59 => {
             wire__crate__api__module_api__set_module_enabled_impl(port, ptr, rust_vec_len, data_len)
         }
-        60 => {
+        60 => wire__crate__api__module_api__set_module_source_url_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        61 => {
             wire__crate__api__module_api__set_module_storage_impl(port, ptr, rust_vec_len, data_len)
         }
-        61 => wire__crate__api__proxy_api__set_proxy_impl(port, ptr, rust_vec_len, data_len),
-        62 => wire__crate__api__module_api__unload_module_impl(port, ptr, rust_vec_len, data_len),
-        63 => wire__crate__api__module_api__update_module_impl(port, ptr, rust_vec_len, data_len),
+        62 => wire__crate__api__proxy_api__set_proxy_impl(port, ptr, rust_vec_len, data_len),
+        63 => wire__crate__api__module_api__unload_module_impl(port, ptr, rust_vec_len, data_len),
+        64 => wire__crate__api__module_api__update_module_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }

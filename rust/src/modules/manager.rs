@@ -6,7 +6,7 @@ use anyhow::Result;
 use sea_orm::{EntityTrait, ActiveModelTrait, Set};
 use chrono::Utc;
 
-use crate::database::{self, entities::module_info};
+use crate::database::{self, entities::{module_info, property}};
 use crate::js_engine::{JsRuntime, ModuleLoader};
 use super::types::*;
 
@@ -58,33 +58,25 @@ impl ModuleManager {
 
     /// 通过URL导入插件
     pub async fn import_from_url(&self, url: &str) -> Result<ModuleInfo> {
-        // 下载脚本
         use crate::http::client::HttpClient;
         let client = HttpClient::new()?;
         let response = client.get(url, HashMap::new()).await?;
-        
+
         if response.status != 200 {
             return Err(anyhow::anyhow!("Failed to download plugin: HTTP {}", response.status));
         }
-        
+
         let script = response.body;
-        
-        // 验证脚本
-        self.loader.validate_script(&script)?;
-        
-        // 提取元信息
-        let metadata = self.loader.extract_metadata(&script)?;
-        let module_id = metadata.id.clone();
-        
-        // 保存脚本文件
-        let script_path = self.modules_dir.join(format!("{}.js", module_id));
-        tokio::fs::write(&script_path, script).await?;
-        
-        // 保存到数据库，记录来源URL
-        self.register_module_with_source(&module_id, Some(url.to_string())).await
+
+        let module_info = self.save_script_and_register(&script, Some(url.to_string())).await?;
+
+        // 保存 ETag / Last-Modified
+        self.save_source_headers(&module_info.id, &response.headers).await.ok();
+
+        Ok(module_info)
     }
 
-    /// 更新插件（如果有URL来源）
+    /// 更新插件（如果有URL来源），支持 ETag/Last-Modified 以跳过未变更
     pub async fn update_module(&self, module_id: &str) -> Result<ModuleInfo> {
         let db = database::get_database()
             .ok_or_else(|| anyhow::anyhow!("Database not initialized"))?;
@@ -95,16 +87,126 @@ impl ModuleManager {
             .await?
             .ok_or_else(|| anyhow::anyhow!("Module not found: {}", module_id))?;
         
-        let source_url = module.source_url
+        let source_url = module.source_url.clone()
             .ok_or_else(|| anyhow::anyhow!("Module has no source URL"))?;
-        
+
+        // 条件请求
+        use crate::http::client::HttpClient;
+        let mut headers = HashMap::new();
+
+        // 读取已保存的 ETag / Last-Modified
+        if let Some(etag_item) = property::Entity::find_by_id(&property::Model::create_id(module_id, "source_etag"))
+            .one(&*conn)
+            .await? {
+            headers.insert("If-None-Match".to_string(), etag_item.value);
+        }
+        if let Some(lm_item) = property::Entity::find_by_id(&property::Model::create_id(module_id, "source_last_modified"))
+            .one(&*conn)
+            .await? {
+            headers.insert("If-Modified-Since".to_string(), lm_item.value);
+        }
+
         drop(conn); // 释放数据库连接
-        
+
+        let client = HttpClient::new()?;
+        let response = client.get(&source_url, headers).await?;
+
+        if response.status == 304 {
+            // 未变更，直接返回当前信息
+            return Ok(ModuleInfo {
+                id: module.id,
+                name: module.name,
+                version: module.version,
+                author: String::new(),
+                description: module.description,
+                icon: None,
+                enabled: module.enabled,
+                source_url: Some(source_url.clone()),
+            });
+        }
+
+        if response.status != 200 {
+            return Err(anyhow::anyhow!("Failed to download plugin: HTTP {}", response.status));
+        }
+
         // 先卸载模块
         self.unload_module(module_id).await?;
-        
-        // 通过URL重新导入
-        self.import_from_url(&source_url).await
+
+        let module_info = self.save_script_and_register(&response.body, Some(source_url)).await?;
+
+        // 保存返回的 ETag/Last-Modified
+        self.save_source_headers(module_id, &response.headers).await.ok();
+
+        Ok(module_info)
+    }
+
+    async fn save_source_headers(&self, module_id: &str, headers: &HashMap<String, String>) -> Result<()> {
+        let db = database::get_database()
+            .ok_or_else(|| anyhow::anyhow!("Database not initialized"))?;
+        let conn = db.read().await;
+        let now = Utc::now().naive_utc();
+
+        if let Some(etag) = headers.get("etag").cloned().or_else(|| headers.get("ETag").cloned()) {
+            // Try update
+            let update_model = property::ActiveModel {
+                id: Set(property::Model::create_id(module_id, "source_etag")),
+                module_id: Set(module_id.to_string()),
+                key: Set("source_etag".to_string()),
+                value: Set(etag.clone()),
+                created_at: sea_orm::ActiveValue::NotSet,
+                updated_at: Set(now),
+            };
+            if update_model.update(&*conn).await.is_err() {
+                // Fallback to insert
+                let insert_model = property::ActiveModel {
+                    id: Set(property::Model::create_id(module_id, "source_etag")),
+                    module_id: Set(module_id.to_string()),
+                    key: Set("source_etag".to_string()),
+                    value: Set(etag),
+                    created_at: Set(now),
+                    updated_at: Set(now),
+                };
+                let _ = insert_model.insert(&*conn).await;
+            }
+        }
+
+        if let Some(lm) = headers.get("last-modified").cloned().or_else(|| headers.get("Last-Modified").cloned()) {
+            let update_model = property::ActiveModel {
+                id: Set(property::Model::create_id(module_id, "source_last_modified")),
+                module_id: Set(module_id.to_string()),
+                key: Set("source_last_modified".to_string()),
+                value: Set(lm.clone()),
+                created_at: sea_orm::ActiveValue::NotSet,
+                updated_at: Set(now),
+            };
+            if update_model.update(&*conn).await.is_err() {
+                let insert_model = property::ActiveModel {
+                    id: Set(property::Model::create_id(module_id, "source_last_modified")),
+                    module_id: Set(module_id.to_string()),
+                    key: Set("source_last_modified".to_string()),
+                    value: Set(lm),
+                    created_at: Set(now),
+                    updated_at: Set(now),
+                };
+                let _ = insert_model.insert(&*conn).await;
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn save_script_and_register(&self, script: &str, source_url: Option<String>) -> Result<ModuleInfo> {
+        // 验证和提取信息
+        self.loader.validate_script(script)?;
+        let metadata = self.loader.extract_metadata(script)?;
+        let module_id = metadata.id.clone();
+
+        // 保存脚本文件
+        let script_path = self.modules_dir.join(format!("{}.js", module_id));
+        tokio::fs::write(&script_path, script).await?;
+
+        // 注册到数据库
+        self.register_module_with_source(&module_id, source_url).await
     }
 
     /// 注册模块（带来源URL）

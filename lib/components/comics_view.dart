@@ -14,8 +14,11 @@ String getImageUrl(RemoteImageInfo info) {
 class ComicsView extends StatefulWidget {
   final String moduleId;
   final String moduleName;
-  final String categorySlug;
-  final String categoryTitle;
+  // category mode
+  final String? categorySlug;
+  final String? categoryTitle;
+  // search mode
+  final String? keyword;
   final VoidCallback? onHistoryChanged;
   final List<SortOption>? sortOptions;
   final String? sortValue;
@@ -26,8 +29,9 @@ class ComicsView extends StatefulWidget {
     super.key,
     required this.moduleId,
     required this.moduleName,
-    required this.categorySlug,
-    required this.categoryTitle,
+    this.categorySlug,
+    this.categoryTitle,
+    this.keyword,
     this.onHistoryChanged,
     this.sortOptions,
     this.sortValue,
@@ -123,12 +127,19 @@ class _ComicsViewState extends State<ComicsView> {
 
     try {
       final sortBy = widget.sortValue ?? _currentSort;
-      final result = await getComics(
-        moduleId: widget.moduleId,
-        categorySlug: widget.categorySlug,
-        sortBy: sortBy,
-        page: _currentPage,
-      );
+      final result = widget.keyword != null && widget.keyword!.isNotEmpty
+          ? await searchComics(
+              moduleId: widget.moduleId,
+              keyword: widget.keyword!,
+              sortBy: sortBy,
+              page: _currentPage,
+            )
+          : await getComics(
+              moduleId: widget.moduleId,
+              categorySlug: widget.categorySlug ?? '',
+              sortBy: sortBy,
+              page: _currentPage,
+            );
 
       setState(() {
         _comics.addAll(result.docs);

@@ -12,6 +12,7 @@ import 'package:comics/screens/comic_info_screen.dart';
 import 'package:comics/screens/module_settings_screen.dart';
 import 'package:comics/screens/settings_screen.dart';
 import 'package:comics/components/home_module_view.dart';
+import 'package:comics/screens/search_screen.dart';
 import 'package:comics/src/history_manager.dart';
 import 'package:comics/src/image_cache_manager.dart';
 
@@ -220,7 +221,11 @@ class _HomeScreenState extends State<HomeScreen> {
               selected: _currentSection == _HomeSection.settings,
               onTap: () {
                 Navigator.of(context).pop();
-                setState(() => _currentSection = _HomeSection.settings);
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const SettingsScreen(),
+                  ),
+                );
               },
             ),
           ],
@@ -339,6 +344,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 label: const Text('从URL导入'),
               ),
               OutlinedButton.icon(
+                onPressed: _updateAllModules,
+                icon: const Icon(Icons.system_update),
+                label: const Text('更新所有(有来源)'),
+              ),
+              OutlinedButton.icon(
                 onPressed: () => _loadModules(rescan: true),
                 icon: _scanningModules
                     ? const SizedBox(
@@ -392,6 +402,8 @@ class _HomeScreenState extends State<HomeScreen> {
                               _selectModule(module);
                             } else if (value == 'update') {
                               _updateModule(module);
+                            } else if (value == 'edit_source') {
+                              _editModuleSource(module);
                             }
                           },
                           itemBuilder: (context) => [
@@ -402,6 +414,10 @@ class _HomeScreenState extends State<HomeScreen> {
                             const PopupMenuItem(
                               value: 'settings',
                               child: Text('设置参数'),
+                            ),
+                            const PopupMenuItem(
+                              value: 'edit_source',
+                              child: Text('编辑来源URL'),
                             ),
                             PopupMenuItem(
                               value: 'update',
@@ -438,6 +454,55 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ],
     );
+  }
+
+  Future<void> _editModuleSource(ModuleInfo module) async {
+    final controller = TextEditingController(text: module.sourceUrl ?? '');
+    final result = await showDialog<String?>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('编辑来源 - ${module.name}'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            hintText: 'https://example.com/plugin.js (留空清除)',
+            border: OutlineInputBorder(),
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, null), child: const Text('取消')),
+          TextButton(onPressed: () => Navigator.pop(context, ''), child: const Text('清除')),
+          TextButton(onPressed: () => Navigator.pop(context, controller.text.trim()), child: const Text('保存')),
+        ],
+      ),
+    );
+    if (result == null) return;
+    try {
+      await setModuleSourceUrl(moduleId: module.id, sourceUrl: result.isEmpty ? null : result);
+      await _loadModules(rescan: false);
+      _showSnack(result.isEmpty ? '已清除来源' : '来源已更新');
+    } catch (e) {
+      _showSnack('保存失败: $e');
+    }
+  }
+
+  Future<void> _updateAllModules() async {
+    final candidates = _modules.where((m) => (m.sourceUrl ?? '').isNotEmpty).toList();
+    if (candidates.isEmpty) {
+      _showSnack('没有可更新的插件');
+      return;
+    }
+    _showSnack('开始更新 ${candidates.length} 个插件');
+    for (final m in candidates) {
+      try {
+        await updateModule(moduleId: m.id);
+      } catch (e) {
+        debugPrint('更新失败 ${m.id}: $e');
+      }
+    }
+    await _loadModules(rescan: false);
+    _showSnack('更新完成');
   }
 
   Widget _buildEmptyModules() {
@@ -519,7 +584,7 @@ class _HomeScreenState extends State<HomeScreen> {
       }
       await targetFile.writeAsBytes(rawBytes);
 
-      await scanAndRegisterModules();
+      await registerModule(moduleId: moduleId);
       await _loadModules(rescan: false);
       setState(() => _currentSection = _HomeSection.browse);
       _showSnack('已导入 $moduleId');
@@ -675,6 +740,17 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: Text(title),
         actions: [
+          if (isBrowse && _selectedModule != null)
+            IconButton(
+              icon: const Icon(Icons.search),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => SearchScreen(module: _selectedModule!),
+                  ),
+                );
+              },
+            ),
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () {
@@ -685,7 +761,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 );
               } else {
-                setState(() => _currentSection = _HomeSection.settings);
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const SettingsScreen(),
+                  ),
+                );
               }
             },
           ),
