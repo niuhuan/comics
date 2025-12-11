@@ -1,4 +1,5 @@
 use reqwest::{Client, Method, Response};
+use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::Duration;
@@ -83,8 +84,63 @@ impl HttpClient {
             _ => return Err(anyhow::anyhow!("Unsupported HTTP method: {}", req.method)),
         };
 
-        let mut request_builder = self.client
-            .request(method, &req.url)
+        // 处理分流：当 URL 使用 IP 且存在 Host 头时，改用域名 + resolve 映射以确保 TLS SNI 正确
+        let mut effective_client = &self.client;
+        let mut effective_url_str = req.url.clone();
+        let mut tmp_client_opt: Option<Client> = None;
+        if let Ok(mut url) = Url::parse(&req.url) {
+            if let Some(host_str) = url.host_str() {
+                // 拷贝 IP host，避免与后续对 url 的可变借用冲突
+                let host = host_str.to_string();
+                // 检查是否为 IP 地址
+                let is_ip = host.parse::<std::net::IpAddr>().is_ok();
+                if is_ip {
+                    if let Some(host_header) = req.headers.get("Host") {
+                        // 使用域名替换 URL 的 host，以便发送时使用正确的 SNI
+                        url.set_host(Some(host_header)).ok();
+                        effective_url_str = url.to_string();
+
+                        // 构建带有 resolve(domain -> ip) 的临时客户端
+                        let mut builder = Client::builder()
+                            .timeout(Duration::from_secs(req.timeout_secs))
+                            .connect_timeout(Duration::from_secs(10))
+                            .pool_max_idle_per_host(10)
+                            .danger_accept_invalid_certs(true)
+                            .resolve(
+                                host_header.as_str(),
+                                {
+                                    // 根据协议选择端口
+                                    let default_port = match url.scheme() {
+                                        "https" => 443,
+                                        _ => 80,
+                                    };
+                                    let ip_addr: std::net::IpAddr = host.parse().unwrap();
+                                    std::net::SocketAddr::new(ip_addr, url.port().unwrap_or(default_port))
+                                },
+                            );
+
+                        // 保持代理配置
+                        if let Some(proxy_result) = ProxyManager::instance().get_reqwest_proxy() {
+                            if let Ok(proxy) = proxy_result {
+                                builder = builder.proxy(proxy);
+                            }
+                        }
+
+                        // 构建临时客户端
+                        if let Ok(c) = builder.build() {
+                            tmp_client_opt = Some(c);
+                        }
+                        if let Some(c) = &tmp_client_opt {
+                            effective_client = c;
+                            tracing::debug!("使用自定义域名解析: {} -> {}", host_header, host);
+                        }
+                    }
+                }
+            }
+        }
+
+        let mut request_builder = effective_client
+            .request(method, &effective_url_str)
             .timeout(Duration::from_secs(req.timeout_secs));
 
         // 添加 headers
