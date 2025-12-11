@@ -11,6 +11,7 @@ pub struct Model {
     pub version: String,      // 版本号
     pub description: String,  // 描述
     pub script_path: String,  // JS 文件路径
+    pub source_url: Option<String>, // 来源URL，用于更新
     pub enabled: bool,        // 是否启用
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,

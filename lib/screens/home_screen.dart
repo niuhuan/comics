@@ -324,14 +324,20 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         Padding(
           padding: const EdgeInsets.all(12),
-          child: Row(
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: [
               ElevatedButton.icon(
                 onPressed: _importModuleFromFile,
                 icon: const Icon(Icons.file_open),
-                label: const Text('导入 JS 模块'),
+                label: const Text('从文件导入'),
               ),
-              const SizedBox(width: 12),
+              ElevatedButton.icon(
+                onPressed: _importModuleFromUrl,
+                icon: const Icon(Icons.link),
+                label: const Text('从URL导入'),
+              ),
               OutlinedButton.icon(
                 onPressed: () => _loadModules(rescan: true),
                 icon: _scanningModules
@@ -355,10 +361,27 @@ class _HomeScreenState extends State<HomeScreen> {
                   itemCount: _modules.length,
                   itemBuilder: (context, index) {
                     final module = _modules[index];
+                    final hasSourceUrl = module.sourceUrl != null && module.sourceUrl!.isNotEmpty;
+                    
                     return Card(
                       child: ListTile(
                         title: Text(module.name),
-                        subtitle: Text('${module.id} · v${module.version}'),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('${module.id} · v${module.version}'),
+                            if (hasSourceUrl)
+                              Text(
+                                '来源: ${module.sourceUrl}',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.grey[600],
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                          ],
+                        ),
                         trailing: PopupMenuButton<String>(
                           onSelected: (value) {
                             if (value == 'settings') {
@@ -367,18 +390,42 @@ class _HomeScreenState extends State<HomeScreen> {
                               _deleteModule(module);
                             } else if (value == 'use') {
                               _selectModule(module);
+                            } else if (value == 'update') {
+                              _updateModule(module);
                             }
                           },
-                          itemBuilder: (context) => const [
-                            PopupMenuItem(
+                          itemBuilder: (context) => [
+                            const PopupMenuItem(
                               value: 'use',
                               child: Text('设为当前源'),
                             ),
-                            PopupMenuItem(
+                            const PopupMenuItem(
                               value: 'settings',
                               child: Text('设置参数'),
                             ),
                             PopupMenuItem(
+                              value: 'update',
+                              enabled: hasSourceUrl,
+                              child: Row(
+                                children: [
+                                  Text(
+                                    '更新插件',
+                                    style: TextStyle(
+                                      color: hasSourceUrl ? null : Colors.grey,
+                                    ),
+                                  ),
+                                  if (!hasSourceUrl) ...[
+                                    const SizedBox(width: 8),
+                                    Icon(
+                                      Icons.info_outline,
+                                      size: 16,
+                                      color: Colors.grey[400],
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            const PopupMenuItem(
                               value: 'delete',
                               child: Text('删除源'),
                             ),
@@ -489,6 +536,67 @@ class _HomeScreenState extends State<HomeScreen> {
     return match?.group(1);
   }
 
+  Future<void> _importModuleFromUrl() async {
+    final controller = TextEditingController();
+    
+    final url = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('从 URL 导入插件'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('请输入插件的 URL 地址：'),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                hintText: 'https://example.com/plugin.js',
+                border: OutlineInputBorder(),
+              ),
+              autofocus: true,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: const Text('导入'),
+          ),
+        ],
+      ),
+    );
+
+    if (url == null || url.isEmpty) return;
+
+    try {
+      _showSnack('正在下载插件...');
+      await importModuleFromUrl(url: url);
+      await _loadModules(rescan: false);
+      setState(() => _currentSection = _HomeSection.browse);
+      _showSnack('插件导入成功');
+    } catch (e) {
+      _showSnack('导入失败: $e');
+    }
+  }
+
+  Future<void> _updateModule(ModuleInfo module) async {
+    // UI层已经确保只有有source_url的插件才能触发更新
+    try {
+      _showSnack('正在更新插件...');
+      await updateModule(moduleId: module.id);
+      await _loadModules(rescan: false);
+      _showSnack('插件更新成功');
+    } catch (e) {
+      _showSnack('更新失败: $e');
+    }
+  }
+
   Future<void> _deleteModule(ModuleInfo module) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -510,27 +618,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (confirm != true) return;
 
-    final modulesDir = getModulesDir();
-    if (modulesDir == null) {
-      _showSnack('模块目录未初始化');
-      return;
-    }
-
     try {
-      final jsFile = File(p.join(modulesDir, '${module.id}.js'));
-      if (await jsFile.exists()) {
-        await jsFile.delete();
-      }
-      final legacyDir = Directory(p.join(modulesDir, module.id));
-      if (await legacyDir.exists()) {
-        await legacyDir.delete(recursive: true);
-      }
-
+      // 清除模块数据
       await clearModuleProperties(moduleId: module.id);
       await ImageCacheManager().clearCacheByModule(module.id);
       await HistoryManager.instance.removeByModule(module.id);
-
-      await scanAndRegisterModules();
+      
+      // 使用新的删除API
+      await deleteModule(moduleId: module.id);
+      
       await _loadModules(rescan: false);
       await _loadHistory();
 

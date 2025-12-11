@@ -270,6 +270,7 @@ class ModuleInfo {
   final String description;
   final String? icon;
   final bool enabled;
+  final String? sourceUrl;
 
   const ModuleInfo({
     required this.id,
@@ -279,6 +280,7 @@ class ModuleInfo {
     required this.description,
     this.icon,
     required this.enabled,
+    this.sourceUrl,
   });
 
   @override
@@ -289,7 +291,8 @@ class ModuleInfo {
       author.hashCode ^
       description.hashCode ^
       icon.hashCode ^
-      enabled.hashCode;
+      enabled.hashCode ^
+      sourceUrl.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -302,7 +305,8 @@ class ModuleInfo {
           author == other.author &&
           description == other.description &&
           icon == other.icon &&
-          enabled == other.enabled;
+          enabled == other.enabled &&
+          sourceUrl == other.sourceUrl;
 }
 
 /// 分页信息 (参考 pikapika Page)
@@ -338,6 +342,7 @@ class PageInfo {
 class Picture {
   final String id;
   final RemoteImageInfo media;
+
   /// 可选的元数据，用于存储图片处理所需的额外信息
   /// 例如：{"chapterId": "123", "imageName": "001.jpg"}
   final Map<String, String> metadata;
@@ -345,29 +350,20 @@ class Picture {
   const Picture({
     required this.id,
     required this.media,
-    this.metadata = const {},
+    required this.metadata,
   });
 
   @override
-  int get hashCode {
-    var hash = id.hashCode ^ media.hashCode;
-    for (var entry in metadata.entries) {
-      hash ^= entry.key.hashCode ^ entry.value.hashCode;
-    }
-    return hash;
-  }
+  int get hashCode => id.hashCode ^ media.hashCode ^ metadata.hashCode;
 
   @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    if (other is! Picture) return false;
-    if (id != other.id || media != other.media) return false;
-    if (metadata.length != other.metadata.length) return false;
-    for (var entry in metadata.entries) {
-      if (other.metadata[entry.key] != entry.value) return false;
-    }
-    return true;
-  }
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Picture &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          media == other.media &&
+          metadata == other.metadata;
 }
 
 /// 图片分页 (参考 pikapika PicturePage)

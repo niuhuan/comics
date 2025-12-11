@@ -21,6 +21,18 @@ Future<List<ModuleInfo>> scanAndRegisterModules() =>
 Future<ModuleInfo> registerModule({required String moduleId}) =>
     RustLib.instance.api.crateApiModuleApiRegisterModule(moduleId: moduleId);
 
+/// 通过URL导入插件
+Future<ModuleInfo> importModuleFromUrl({required String url}) =>
+    RustLib.instance.api.crateApiModuleApiImportModuleFromUrl(url: url);
+
+/// 更新插件（如果有URL来源）
+Future<ModuleInfo> updateModule({required String moduleId}) =>
+    RustLib.instance.api.crateApiModuleApiUpdateModule(moduleId: moduleId);
+
+/// 删除插件
+Future<void> deleteModule({required String moduleId}) =>
+    RustLib.instance.api.crateApiModuleApiDeleteModule(moduleId: moduleId);
+
 /// 加载模块
 Future<void> loadModule({required String moduleId}) =>
     RustLib.instance.api.crateApiModuleApiLoadModule(moduleId: moduleId);

@@ -52,11 +52,63 @@ impl ModuleManager {
             description: m.description,
             icon: None,
             enabled: m.enabled,
+            source_url: m.source_url,
         }).collect())
     }
 
-    /// 注册/更新模块
-    pub async fn register_module(&self, module_id: &str) -> Result<ModuleInfo> {
+    /// 通过URL导入插件
+    pub async fn import_from_url(&self, url: &str) -> Result<ModuleInfo> {
+        // 下载脚本
+        use crate::http::client::HttpClient;
+        let client = HttpClient::new()?;
+        let response = client.get(url, HashMap::new()).await?;
+        
+        if response.status != 200 {
+            return Err(anyhow::anyhow!("Failed to download plugin: HTTP {}", response.status));
+        }
+        
+        let script = response.body;
+        
+        // 验证脚本
+        self.loader.validate_script(&script)?;
+        
+        // 提取元信息
+        let metadata = self.loader.extract_metadata(&script)?;
+        let module_id = metadata.id.clone();
+        
+        // 保存脚本文件
+        let script_path = self.modules_dir.join(format!("{}.js", module_id));
+        tokio::fs::write(&script_path, script).await?;
+        
+        // 保存到数据库，记录来源URL
+        self.register_module_with_source(&module_id, Some(url.to_string())).await
+    }
+
+    /// 更新插件（如果有URL来源）
+    pub async fn update_module(&self, module_id: &str) -> Result<ModuleInfo> {
+        let db = database::get_database()
+            .ok_or_else(|| anyhow::anyhow!("Database not initialized"))?;
+        
+        let conn = db.read().await;
+        let module = module_info::Entity::find_by_id(module_id)
+            .one(&*conn)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("Module not found: {}", module_id))?;
+        
+        let source_url = module.source_url
+            .ok_or_else(|| anyhow::anyhow!("Module has no source URL"))?;
+        
+        drop(conn); // 释放数据库连接
+        
+        // 先卸载模块
+        self.unload_module(module_id).await?;
+        
+        // 通过URL重新导入
+        self.import_from_url(&source_url).await
+    }
+
+    /// 注册模块（带来源URL）
+    async fn register_module_with_source(&self, module_id: &str, source_url: Option<String>) -> Result<ModuleInfo> {
         // 加载脚本
         let script = self.loader.load_script(module_id).await?;
         
@@ -79,13 +131,14 @@ impl ModuleManager {
             .await?;
         
         if let Some(_) = existing {
-            // 更新
+            // 更新，保留或覆盖来源
             let active_model = module_info::ActiveModel {
                 id: Set(metadata.id.clone()),
                 name: Set(metadata.name.clone()),
                 version: Set(metadata.version.clone()),
                 description: Set(metadata.description.clone()),
                 script_path: Set(format!("{}.js", module_id)),
+                source_url: Set(source_url.clone()),
                 enabled: Set(true),
                 created_at: sea_orm::ActiveValue::NotSet,
                 updated_at: Set(now),
@@ -99,6 +152,7 @@ impl ModuleManager {
                 version: Set(metadata.version.clone()),
                 description: Set(metadata.description.clone()),
                 script_path: Set(format!("{}.js", module_id)),
+                source_url: Set(source_url.clone()),
                 enabled: Set(true),
                 created_at: Set(now),
                 updated_at: Set(now),
@@ -106,7 +160,7 @@ impl ModuleManager {
             active_model.insert(&*conn).await?;
         }
         
-        tracing::debug!("Module registered: {} v{}", metadata.name, metadata.version);
+        tracing::info!("Module registered: {} v{} (source: {:?})", metadata.name, metadata.version, source_url);
         
         Ok(ModuleInfo {
             id: metadata.id,
@@ -116,7 +170,13 @@ impl ModuleManager {
             description: metadata.description,
             icon: None,
             enabled: true,
+            source_url: source_url.clone(),
         })
+    }
+
+    /// 注册/更新模块（不记录来源）
+    pub async fn register_module(&self, module_id: &str) -> Result<ModuleInfo> {
+        self.register_module_with_source(module_id, None).await
     }
 
     /// 加载模块（创建运行时实例）
@@ -153,13 +213,14 @@ impl ModuleManager {
         // 保存实例
         let instance = Arc::new(ModuleInstance {
             info: ModuleInfo {
-                id: module.id,
+                id: module.id.clone(),
                 name: module.name,
                 version: module.version,
                 author: String::new(),
                 description: module.description,
                 icon: None,
                 enabled: module.enabled,
+                source_url: module.source_url,
             },
             runtime,
         });

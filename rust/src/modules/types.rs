@@ -11,6 +11,7 @@ pub struct ModuleInfo {
     pub description: String,
     pub icon: Option<String>,
     pub enabled: bool,
+    pub source_url: Option<String>,
 }
 
 /// 远程图片信息 (参考 pikapika RemoteImageInfo)

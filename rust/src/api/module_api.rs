@@ -51,6 +51,53 @@ pub async fn register_module(module_id: String) -> anyhow::Result<ModuleInfo> {
     m.register_module(&module_id).await
 }
 
+/// 通过URL导入插件
+#[frb]
+pub async fn import_module_from_url(url: String) -> anyhow::Result<ModuleInfo> {
+    let manager = get_module_manager()?;
+    let m = manager.read().await;
+    m.import_from_url(&url).await
+}
+
+/// 更新插件（如果有URL来源）
+#[frb]
+pub async fn update_module(module_id: String) -> anyhow::Result<ModuleInfo> {
+    let manager = get_module_manager()?;
+    let m = manager.read().await;
+    m.update_module(&module_id).await
+}
+
+/// 删除插件
+#[frb]
+pub async fn delete_module(module_id: String) -> anyhow::Result<()> {
+    let manager = get_module_manager()?;
+    let m = manager.read().await;
+    
+    // 先卸载模块
+    m.unload_module(&module_id).await?;
+    
+    // 删除数据库记录
+    let db = database::get_database()
+        .ok_or_else(|| anyhow::anyhow!("Database not initialized"))?;
+    let conn = db.read().await;
+    
+    use sea_orm::EntityTrait;
+    database::entities::module_info::Entity::delete_by_id(&module_id)
+        .exec(&*conn)
+        .await?;
+    
+    // 删除脚本文件
+    if let Some(modules_dir) = crate::get_modules_dir() {
+        let script_path = modules_dir.join(format!("{}.js", module_id));
+        if script_path.exists() {
+            tokio::fs::remove_file(script_path).await?;
+        }
+    }
+    
+    tracing::info!("Module deleted: {}", module_id);
+    Ok(())
+}
+
 /// 加载模块
 #[frb]
 pub async fn load_module(module_id: String) -> anyhow::Result<()> {
