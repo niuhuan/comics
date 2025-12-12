@@ -139,31 +139,72 @@ class RustBuilder {
   Future<String> build() async {
     final extraArgs = _buildOptions?.flags ?? [];
     final manifestPath = path.join(environment.manifestDir, 'Cargo.toml');
-    runCommand(
-      'rustup',
-      [
-        'run',
-        _toolchain,
+    
+    // Use cargo-ndk for Android builds
+    if (target.android != null) {
+      final minSdkVersion = environment.androidMinSdkVersion;
+      if (minSdkVersion == null) {
+        throw BuildException('androidMinSdkVersion is not set');
+      }
+      
+      // cargo-ndk command format: cargo ndk -t <target> --platform <minSdk> build --target-dir <dir> [--release]
+      // Set working directory to manifest directory so cargo-ndk can find Cargo.toml
+      runCommand(
         'cargo',
-        'build',
-        ...extraArgs,
-        '--manifest-path',
-        manifestPath,
-        '-p',
-        environment.crateInfo.packageName,
-        if (!environment.configuration.isDebug) '--release',
-        '--target',
-        target.rust,
-        '--target-dir',
+        [
+          'ndk',
+          '-t',
+          target.rust,
+          '--platform',
+          minSdkVersion.toString(),
+          'build',
+          '--target-dir',
+          environment.targetTempDir,
+          ...extraArgs,
+          '--manifest-path',
+          manifestPath,
+          '-p',
+          environment.crateInfo.packageName,
+          if (!environment.configuration.isDebug) '--release',
+        ],
+        workingDirectory: environment.manifestDir,
+        environment: await _buildEnvironment(),
+      );
+      
+      // cargo-ndk outputs to standard cargo target directory structure
+      return path.join(
         environment.targetTempDir,
-      ],
-      environment: await _buildEnvironment(),
-    );
-    return path.join(
-      environment.targetTempDir,
-      target.rust,
-      environment.configuration.rustName,
-    );
+        target.rust,
+        environment.configuration.rustName,
+      );
+    } else {
+      // Non-Android builds use regular cargo
+      runCommand(
+        'rustup',
+        [
+          'run',
+          _toolchain,
+          'cargo',
+          'build',
+          ...extraArgs,
+          '--manifest-path',
+          manifestPath,
+          '-p',
+          environment.crateInfo.packageName,
+          if (!environment.configuration.isDebug) '--release',
+          '--target',
+          target.rust,
+          '--target-dir',
+          environment.targetTempDir,
+        ],
+        environment: await _buildEnvironment(),
+      );
+      return path.join(
+        environment.targetTempDir,
+        target.rust,
+        environment.configuration.rustName,
+      );
+    }
   }
 
   Future<Map<String, String>> _buildEnvironment() async {
@@ -192,7 +233,8 @@ class RustBuilder {
       if (!env.ndkIsInstalled() && environment.javaHome != null) {
         env.installNdk(javaHome: environment.javaHome!);
       }
-      return env.buildEnvironment();
+      // Use simplified environment for cargo-ndk (only needs ANDROID_NDK_HOME)
+      return env.buildEnvironmentForCargoNdk();
     }
   }
 }

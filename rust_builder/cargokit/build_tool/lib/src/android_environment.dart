@@ -192,4 +192,12 @@ class AndroidEnvironment {
     rustFlags = '$rustFlags-L\x1f$workaroundDir';
     return rustFlags;
   }
+
+  /// Build environment for cargo-ndk (simplified, only needs ANDROID_NDK_HOME)
+  Map<String, String> buildEnvironmentForCargoNdk() {
+    final ndkPath = path.join(sdkPath, 'ndk', ndkVersion);
+    return {
+      'ANDROID_NDK_HOME': ndkPath,
+    };
+  }
 }

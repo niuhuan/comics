@@ -8,7 +8,7 @@ plugins {
 android {
     namespace = "dev.niuhuan.comics"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    ndkVersion = "29.0.14206865" // flutter.ndkVersion
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11

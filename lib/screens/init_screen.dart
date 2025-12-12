@@ -27,6 +27,22 @@ class _InitScreenState extends State<InitScreen> {
 
   Future<void> _initialize() async {
     try {
+      // 检查是否已经初始化
+      if (isInitialized()) {
+        // 如果已经初始化，直接跳转到主页面
+        setState(() {
+          _status = '应用已就绪';
+          _initialized = true;
+        });
+        await Future.delayed(const Duration(milliseconds: 500));
+        if (mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const HomeScreen()),
+          );
+        }
+        return;
+      }
+
       // 获取应用数据目录
       final directory = await _getAppDirectory();
       setState(() => _status = '初始化应用目录: $directory');
