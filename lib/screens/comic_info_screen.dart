@@ -176,27 +176,49 @@ class _ComicInfoScreenState extends State<ComicInfoScreen> {
 
     if (_detailError != null) {
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, size: 60, color: Colors.red),
-            const SizedBox(height: 16),
-            Text('加载失败', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Text(
-                _detailError!,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.grey),
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 64, color: Colors.red),
+              const SizedBox(height: 16),
+              Text(
+                '加载失败',
+                style: Theme.of(context).textTheme.titleLarge,
               ),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _loadComicDetail,
-              child: const Text('重试'),
-            ),
-          ],
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: _loadComicDetail,
+                icon: const Icon(Icons.refresh),
+                label: const Text('重试'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                ),
+              ),
+              const SizedBox(height: 16),
+              ExpansionTile(
+                title: const Text('错误详情', style: TextStyle(fontSize: 14)),
+                tilePadding: EdgeInsets.zero,
+                childrenPadding: const EdgeInsets.all(8),
+                children: [
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
+                    ),
+                    child: Text(
+                      _detailError!,
+                      style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -487,12 +509,40 @@ class _ComicInfoScreenState extends State<ComicInfoScreen> {
       return Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('加载章节失败: $_epsError'),
+            const Icon(Icons.error_outline, size: 48, color: Colors.red),
             const SizedBox(height: 16),
-            ElevatedButton(
+            const Text(
+              '加载章节失败',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
               onPressed: _loadEps,
-              child: const Text('重试'),
+              icon: const Icon(Icons.refresh),
+              label: const Text('重试'),
+            ),
+            const SizedBox(height: 16),
+            ExpansionTile(
+              title: const Text('错误详情', style: TextStyle(fontSize: 14)),
+              tilePadding: EdgeInsets.zero,
+              childrenPadding: const EdgeInsets.all(8),
+              children: [
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
+                  ),
+                  child: Text(
+                    _epsError!,
+                    style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                  ),
+                ),
+              ],
             ),
           ],
         ),

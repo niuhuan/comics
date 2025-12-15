@@ -785,9 +785,14 @@ abstract class _ImageReaderContentState extends State<_ImageReaderContent> {
         });
       },
       onChangeEnd: (value) {
+        final to = value.toInt();
         setState(() {
           _sliderDragging = false;
+          _slider = to;
         });
+        // 跳转到对应页
+        // 拖拽滑动条不播放动画，直接跳转
+        _needJumpTo(to, false);
       },
       onChanged: (value) {
         _slider = value.toInt();
@@ -1359,7 +1364,24 @@ class _ListViewReaderState extends _ImageReaderContentState
   }
 
   @override
-  void _needJumpTo(int index, bool animation) {}
+  void _needJumpTo(int index, bool animation) {
+    // 近似按比例滚动到对应位置（ListView 无索引跳转）
+    if (!mounted || widget.struct.images.isEmpty) return;
+    final maxExtent = _scrollController.position.maxScrollExtent;
+    final ratio = widget.struct.images.length > 1
+        ? index / (widget.struct.images.length - 1)
+        : 0.0;
+    final target = (maxExtent * ratio).clamp(0.0, maxExtent);
+    if (widget.noAnimation) {
+      _scrollController.jumpTo(target);
+    } else {
+      _scrollController.animateTo(
+        target,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.ease,
+      );
+    }
+  }
 
   int _controllerTime = 0;
 
